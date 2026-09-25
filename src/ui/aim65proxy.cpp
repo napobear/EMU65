@@ -23,7 +23,16 @@ void Aim65Proxy::RegisterProxy()
 
 void Aim65Proxy::Start()
 {
-    //Cpu::GetInstance()->Reset();
+    // Without this, PC starts at 0 (the CPU struct is zero-initialized, not
+    // loaded from the reset vector) instead of wherever 0xFFFC/0xFFFD point.
+    // Address 0 holds opcode 0x00 (BRK), which vectors through 0xFFFE/0xFFFF
+    // into the ROM's general IRQ/BRK handler -- code that assumes the real
+    // reset routine already initialized its RAM-based indirect vectors
+    // (e.g. it does JMP ($A404), uninitialized, so it jumps to 0 again).
+    // The result is an infinite BRK loop that never reaches the real
+    // power-on routine, so nothing is ever written to the LED display or
+    // to the keyboard/printer registers.
+    Cpu::GetInstance()->Reset();
     Cpu::GetInstance()->Run();
 }
 
