@@ -60,7 +60,7 @@ ApplicationWindow {
         height: 100
         x: 10
         y: 160
-        color: qsTr("transparent")
+        color: "transparent"
 
         Rectangle {
             id: rstRunKbRect
@@ -68,10 +68,10 @@ ApplicationWindow {
             height: 25
             anchors.top : switchPanel.top
             anchors.left: switchPanel.left
-            color: qsTr("black")
+            color: "black"
             Text {
                 text: qsTr("RESET")
-                color: qsTr("white")
+                color: "white"
                 anchors.top: rstRunKbRect.top
                 anchors.left: rstRunKbRect.left
                 anchors.topMargin: 5
@@ -80,7 +80,7 @@ ApplicationWindow {
 
             Text {
                 text: qsTr("RUN")
-                color: qsTr("white")
+                color: "white"
                 anchors.top: rstRunKbRect.top
                 anchors.horizontalCenter: rstRunKbRect.horizontalCenter
                 anchors.topMargin: 5
@@ -88,7 +88,7 @@ ApplicationWindow {
 
             Text {
                 text: qsTr("KB")
-                color: qsTr("white")
+                color: "white"
                 anchors.top: rstRunKbRect.top
                 anchors.right: rstRunKbRect.right
                 anchors.rightMargin: 30
@@ -103,10 +103,10 @@ ApplicationWindow {
             height: 25
             anchors.bottom : switchPanel.bottom
             anchors.right: switchPanel.right
-            color: qsTr("black")
+            color: "black"
             Text {
                 text: qsTr("STEP")
-                color: qsTr("white")
+                color: "white"
                 anchors.bottom: stepTtyRect.bottom
                 anchors.left: stepTtyRect.left
                 anchors.horizontalCenter: stepTtyRect.horizontalCenter
@@ -116,7 +116,7 @@ ApplicationWindow {
 
             Text {
                 text: qsTr("TTY")
-                color: qsTr("white")
+                color: "white"
                 anchors.bottom: stepTtyRect.bottom
                 anchors.right: stepTtyRect.right
                 anchors.rightMargin: 30
@@ -170,7 +170,7 @@ ApplicationWindow {
         height: 180
         anchors.left: switchPanel.right
         anchors.leftMargin: 20
-        color: qsTr("black")
+        color: "black"
         y: 50
 
         Rectangle {
@@ -184,16 +184,16 @@ ApplicationWindow {
             anchors.horizontalCenter: parent.Center
             height: 80
             width: 520
-            border.color: qsTr("white")
+            border.color: "white"
             border.width: 2
-            color: qsTr("black")
+            color: "black"
 
             Text {
                 id: ledScreen
                 text: {
                     qsTr(ledDisplay.GetLedDisplay())
                 }
-                color: qsTr("red")
+                color: "red"
                 font.pointSize: 30
                 anchors.left: parent.left
                 anchors.leftMargin: 10
@@ -201,7 +201,7 @@ ApplicationWindow {
 
                 Connections {
                     target: ledDisplay
-                    onDisplayDigitChanged: {
+                    function onDisplayDigitChanged() {
                         ledScreen.text = qsTr(ledDisplay.GetLedDisplay())
                     }
                 }
