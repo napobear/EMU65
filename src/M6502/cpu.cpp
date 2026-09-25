@@ -58,6 +58,10 @@ byte Cpu::Read(word address)
 void Cpu::Write(word address, byte value) const
 {
     this->m_channel->Write(address, value);
+    // Keep the debug inspector's "CPU Status" panel live. Safe to call
+    // unconditionally at CPU speed: AimInspector::UpdateCpuStatus()
+    // coalesces these into at most one pending update to the GUI thread.
+    AimInspector::GetInstance()->UpdateCpuStatus(this->GetCpuDebugData());
 }
 
 void Cpu::Reset()
@@ -65,34 +69,9 @@ void Cpu::Reset()
     Reset6502(&this->m_cpu);
 }
 
-#ifdef EMU65_DEBUG
-
-byte Cpu::UpdateDbgStatus()
-{
-    AimInspector::GetInstance()->UpdateCpuStatus(this->GetCpuDebugData());
-
-    const std::string timestamp = "[" + AimInspector::CurrentDateTime() + "] ";
-    std::string str = timestamp + this->GetCpuDebugData();
-    std::ofstream fout("var/log/dbgoutput.log", std::ios_base::out | std::ios_base::app);
-
-    for (int i = 0; i < str.size(); ++i)
-    {
-        if (str[i])
-        fout.put(str[i]);
-    }
-
-    fout << std::endl;
-    fout.close();
-    return 1;
-}
-
-// TODO -- Expose:
-// * Cpu cycles: ICount, IPeriod
-// Produces a formatted string of data to send to AimInspector
-// Chances are AimInspector won't need to work with
-// any data at all, just display things that the emulator components
-// feed it. Debugging metrics will be processed by their corresponding class.
-std::string Cpu::GetCpuDebugData()
+// Produces a formatted string of the current register/flag state (and the
+// bytes at PC and the top of stack) for AimInspector's "CPU Status" panel.
+std::string Cpu::GetCpuDebugData() const
 {
     const int stringBufferSize = 128;
     char FA[9]="NVRBDIZC";
@@ -107,12 +86,10 @@ std::string Cpu::GetCpuDebugData()
 
     for(J=0,F=m_cpu.P;J<8;J++,F<<=1)
     {
-        S[stringBufferSize];
         sprintf(S, "%c",F&0x80? FA[J]:'.');
         dbgOutput += S;
     }
 
-    S[stringBufferSize];
     sprintf(S, "]\n");
     dbgOutput += S;
 
@@ -120,15 +97,33 @@ std::string Cpu::GetCpuDebugData()
             (
                 S,
                 "AT PC: [%02X]   AT SP: [%02X %02X %02X]\n",
-                Read(m_cpu.PC.W),
-                Read(0x0100+(byte)(m_cpu.S+1)),
-                Read(0x0100+(byte)(m_cpu.S+2)),
-                Read(0x0100+(byte)(m_cpu.S+3))
+                m_channel->Read(m_cpu.PC.W),
+                m_channel->Read(0x0100+(byte)(m_cpu.S+1)),
+                m_channel->Read(0x0100+(byte)(m_cpu.S+2)),
+                m_channel->Read(0x0100+(byte)(m_cpu.S+3))
                 );
     dbgOutput += S;
-    S[stringBufferSize];
 
     return dbgOutput;
+}
+
+#ifdef EMU65_DEBUG
+
+byte Cpu::UpdateDbgStatus()
+{
+    const std::string timestamp = "[" + AimInspector::CurrentDateTime() + "] ";
+    std::string str = timestamp + this->GetCpuDebugData();
+    std::ofstream fout("var/log/dbgoutput.log", std::ios_base::out | std::ios_base::app);
+
+    for (int i = 0; i < str.size(); ++i)
+    {
+        if (str[i])
+        fout.put(str[i]);
+    }
+
+    fout << std::endl;
+    fout.close();
+    return 1;
 }
 
 #endif /* EMU65_DEBUG */

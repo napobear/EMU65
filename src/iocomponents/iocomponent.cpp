@@ -53,7 +53,7 @@ IOComponent::~IOComponent()
 {
 }
 
-std::vector<word> IOComponent::GetAddressRange() const
+const std::vector<word>& IOComponent::GetAddressRange() const
 {
     return this->m_addressRange;
 }
@@ -133,10 +133,21 @@ std::string IOComponent::DumpMemory(word address)
     const int range = 16;
     char S[128];
 
+    // GetAddressRange() used to be called here on every single loop
+    // iteration (twice per check: once for .size(), once to index), and it
+    // returned std::vector<word> *by value* -- for a component the size of
+    // RAM (1024 registers) that's on the order of a hundred full-vector
+    // copies for one DumpMemory() call, itself invoked on every CPU write.
+    // That overhead alone was enough to make the emulator run orders of
+    // magnitude slower than real hardware. Read the bounds once instead.
+    const std::vector<word> &addressRange = this->GetAddressRange();
+    const word minAddress = addressRange.front();
+    const word maxAddress = addressRange.back();
+
     sprintf(S, "\n");
     memoryDump += S;
-    for(int i = (address - range >= this->GetAddressRange()[0] ? address - range : address);
-        i <= (address + range) && i <= this->GetAddressRange()[this->GetAddressRange().size() - 1];
+    for(int i = (address - range >= minAddress ? address - range : address);
+        i <= (address + range) && i <= maxAddress;
         ++i)
     {
         sprintf(S, "%04X: %02X | %c\n",i, this->m_registers[i], isprint(static_cast<int>(this->m_registers[i]))? static_cast<int>(this->m_registers[i]):'.');

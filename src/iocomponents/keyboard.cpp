@@ -53,7 +53,7 @@ bool Keyboard::IsValidChar(char ch) const
 
 void Keyboard::UpdateDebugStatus(word address)
 {
-
+    AimInspector::GetInstance()->UpdateKeyboardStatus(this->DumpMemory(address));
 }
 
 // TOTHINK -- Where should I hook up F1, F2 and F3?

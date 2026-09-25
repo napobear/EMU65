@@ -11,11 +11,8 @@
 #include <memory>
 #include "../globals.h"
 #include "../iocomponents/cpuchannel.h"
-#include "M6502.h"
-
-#ifdef EMU65_DEBUG
 #include "../debug/aiminspector.h"
-#endif
+#include "M6502.h"
 
 class Cpu
 {
@@ -83,11 +80,18 @@ class Cpu
    */
   int ExecuteOpcode(int runCycles);
 
+  /**
+   * Formats the current register/flag state (and the bytes at PC and the
+   * top of stack) for display in the AimInspector debug window. Always
+   * available -- unlike UpdateDbgStatus() below, this isn't tied to the
+   * ROM's own (never-enabled) single-step trace mode.
+   */
+  std::string GetCpuDebugData() const;
+
   #ifdef EMU65_DEBUG
 
   AimInspector* GetInspector();
 
-  std::string GetCpuDebugData();
   std::string DumpMemory(word Addr);
 
   byte UpdateDbgStatus();
