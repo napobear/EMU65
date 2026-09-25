@@ -5,6 +5,8 @@
 #include <QString>
 #include "../globals.h"
 #include <time.h>
+#include <mutex>
+#include <atomic>
 
 /**
  * Singleton debugging class. Contains information about the current state of
@@ -66,6 +68,28 @@ private:
     QString m_ledStatus;
     QString m_printerStatus;
     QString m_keyboardStatus;
+
+    // The Update*Status() methods can be called from the CPU's own QThread
+    // at CPU speed (once per register write). Each holds at most one
+    // queued call to AimInspector's own (GUI) thread in flight at a time:
+    // further calls while one is pending just overwrite `value` with the
+    // latest data instead of queuing another event, so the GUI thread's
+    // event queue can never build an unbounded backlog no matter how fast
+    // the emulator writes, while the inspector still always ends up
+    // showing the most recent state.
+    struct PendingUpdate
+    {
+        std::mutex mutex;
+        QString value;
+        std::atomic<bool> queued{false};
+    };
+    void QueueStatusUpdate(PendingUpdate &pending, const QString &value, void (AimInspector::*setter)(QString));
+
+    PendingUpdate m_pendingCpuStatus;
+    PendingUpdate m_pendingComponentStatus;
+    PendingUpdate m_pendingLedStatus;
+    PendingUpdate m_pendingPrinterStatus;
+    PendingUpdate m_pendingKeyboardStatus;
 
     DISALLOW_COPY_AND_ASSIGN(AimInspector);
     void SetCpuStatus(QString cpuStatus);

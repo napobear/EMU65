@@ -1,22 +1,23 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Window
+import QtQuick.Layouts
 
 ApplicationWindow {
     visible: true
-    width: 640
+    width: 720
     height: 640
     title: "EMU65 Debugger"
 
-    Rectangle {
-        id: aimInspectorArea
-        width: parent.width
-        height: parent.height
-        x: 0
-        y: 0
+    ColumnLayout {
+        anchors.fill: parent
+        anchors.margins: 8
+        spacing: 8
 
         Text {
             id: aimInspCpu
+            Layout.fillWidth: true
+            font.family: "monospace"
             text: qsTr("CPU Status: ") + aimInspector.cpuStatus
 
             Connections {
@@ -27,57 +28,79 @@ ApplicationWindow {
             }
         }
 
-        Text {
-            id : aimInspComponent
-            anchors.top: aimInspCpu.bottom
-            text : qsTr("Memory Contents\n")
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 16
 
-            Connections {
-                target: aimInspector
-                function onComponentStatusChanged() {
-                    aimInspComponent.text = qsTr("Memory Contents\n") + aimInspector.componentStatus
+            Text {
+                id: aimInspLed
+                Layout.alignment: Qt.AlignTop
+                font.family: "monospace"
+                text: qsTr("LED Registers\n")
+
+                Connections {
+                    target: aimInspector
+                    function onLedStatusChanged() {
+                        aimInspLed.text = qsTr("LED Registers\n") + aimInspector.ledStatus
+                    }
                 }
+            }
+
+            Text {
+                id: aimInspKeyboard
+                Layout.alignment: Qt.AlignTop
+                font.family: "monospace"
+                text: qsTr("Keyboard Registers\n")
+
+                Connections {
+                    target: aimInspector
+                    function onKeyboardStatusChanged() {
+                        aimInspKeyboard.text = qsTr("Keyboard Registers\n") + aimInspector.keyboardStatus
+                    }
+                }
+            }
+
+            Text {
+                id: aimInspPrinter
+                Layout.alignment: Qt.AlignTop
+                font.family: "monospace"
+                text: qsTr("Printer Registers:\n")
+
+                Connections {
+                    target: aimInspector
+                    function onPrinterStatusChanged() {
+                        aimInspPrinter.text = qsTr("Printer Registers:\n") + aimInspector.printerStatus
+                    }
+                }
+            }
+
+            Item {
+                // Absorbs any extra horizontal space so the register panels
+                // above stay left-aligned and don't get stretched apart.
+                Layout.fillWidth: true
             }
         }
 
         Text {
-            id: aimInspLed
-            anchors.left : aimInspCpu.right
-            anchors.leftMargin: 10
-            text: qsTr("LED Registers\n")
-
-            Connections {
-                target: aimInspector
-                function onLedStatusChanged() {
-                    aimInspLed.text = qsTr("LED Registers\n") + aimInspector.ledStatus
-                }
-            }
+            text: qsTr("Memory Contents")
+            font.bold: true
         }
 
-        Text {
-            id: aimInspPrinter
-            anchors.left : aimInspKeyboard.right
-            anchors.leftMargin: 10
-            text: qsTr("Printer Registers:\n")
+        ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
 
-            Connections {
-                target: aimInspector
-                function onPrinterStatusChanged() {
-                    aimInspPrinter.text = qsTr("Printer Registers:\n") + aimInspector.printerStatus
-                }
-            }
-        }
+            Text {
+                id: aimInspComponent
+                font.family: "monospace"
+                text: aimInspector.componentStatus
 
-        Text {
-            id: aimInspKeyboard
-            anchors.left : aimInspLed.right
-            anchors.leftMargin: 10
-            text: qsTr("Keyboard Registers\n")
-
-            Connections {
-                target: aimInspector
-                function onKeyboardStatusChanged() {
-                    aimInspKeyboard.text = qsTr("Keyboard Registers\n") + aimInspector.keyboardStatus
+                Connections {
+                    target: aimInspector
+                    function onComponentStatusChanged() {
+                        aimInspComponent.text = aimInspector.componentStatus
+                    }
                 }
             }
         }
