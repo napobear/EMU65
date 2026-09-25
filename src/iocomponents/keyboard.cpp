@@ -34,8 +34,8 @@ Keyboard::Keyboard() : IOComponentIRQ()
     this->SetAddressRange();
 }
 
-Keyboard::Keyboard(const byte *registers, const word minAddress, const word maxAddress)
-    : IOComponentIRQ(registers, minAddress, maxAddress)
+Keyboard::Keyboard(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress)
+    : IOComponentIRQ(registers, registersSize, minAddress, maxAddress)
 {
 }
 

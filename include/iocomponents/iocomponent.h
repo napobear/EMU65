@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <utility>
+#include <cstddef>
 #include "../globals.h"
 #include "../debug/aiminspector.h"
 
@@ -24,8 +25,12 @@ class IOComponent
 
     /**
      * Default constructor.
+     * @param registers Buffer to seed the register map from.
+     * @param registersSize Number of valid bytes available in \a registers. Must be at
+     *        least (maxAddress - minAddress + 1); an insufficient buffer throws
+     *        std::out_of_range rather than reading past its end.
      */
-    IOComponent(const byte *registers, const word minAddress, const word maxAddress);
+    IOComponent(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
     /**
      * This constructor accepts an allocated address range for the IOComponent as parameters
      * and constructs a dictionary of registers initialised to a passive state.

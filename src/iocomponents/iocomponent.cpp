@@ -1,5 +1,7 @@
 #include "../../include/iocomponents/iocomponent.h"
 #include <fstream>
+#include <stdexcept>
+#include <string>
 
 IOComponent::IOComponent()
 {
@@ -11,24 +13,29 @@ IOComponent::IOComponent()
 // write is within correct range but inexistent at the moment.
 // In such case, the map entry could be created on the spot.
 IOComponent::IOComponent(const byte *registers,
+                         std::size_t registersSize,
                          const word minAddress,
                          const word maxAddress)
 {
+    // Indexing 'registers' past its end is undefined behaviour, not something a
+    // try/catch can intercept, so the buffer must be validated up front instead.
+    const std::size_t expectedSize = static_cast<std::size_t>(maxAddress - minAddress) + 1;
+    if (registers == nullptr || registersSize < expectedSize)
+    {
+        throw std::out_of_range(
+            "IOComponent: image buffer (" + std::to_string(registersSize) +
+            " bytes) is smaller than the address range 0x" + std::to_string(minAddress) +
+            "-0x" + std::to_string(maxAddress) + " (" + std::to_string(expectedSize) + " bytes required).");
+    }
+
     // Has to be int instead of word, because otherwise it wraps around into 0x0 right after 0xFFFF
     // and hence the for loop condition succeeds but 'j' keeps incrementing thus reching the end
     // of the ROM image and causing an exception.
     int i, j;
-    try
+    for (i = minAddress, j = 0; i <= maxAddress; ++i, ++j)
     {
-        for (i = minAddress, j = 0; i <= maxAddress; ++i, ++j)
-        {
-            this->m_addressRange.push_back(i);
-            this->m_registers.insert(std::make_pair(i, registers[j]));
-        }
-    }
-    catch(std::exception &e)
-    {
-        std::string details = e.what();
+        this->m_addressRange.push_back(i);
+        this->m_registers.insert(std::make_pair(i, registers[j]));
     }
 }
 

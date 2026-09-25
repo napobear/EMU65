@@ -10,7 +10,7 @@
 /**
  * Obtains ASCII characters and lays them out in a panel of 'm' displays with 'n' chars per display.
  */
-class LedDisplayProxy : public QObject, public UiProxy
+class LedDisplayProxy : public QObject, public UiProxy, public std::enable_shared_from_this<LedDisplayProxy>
 {
     Q_OBJECT
 public:

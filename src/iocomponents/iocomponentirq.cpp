@@ -4,8 +4,8 @@ IOComponentIRQ::IOComponentIRQ() : m_channel(nullptr)
 {
 }
 
-IOComponentIRQ::IOComponentIRQ(const byte *registers, const word minAddress, const word maxAddress)
-    : IOComponent(registers, minAddress, maxAddress), m_channel(nullptr)
+IOComponentIRQ::IOComponentIRQ(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress)
+    : IOComponent(registers, registersSize, minAddress, maxAddress), m_channel(nullptr)
 {
 }
 

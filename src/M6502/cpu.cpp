@@ -1,5 +1,7 @@
 #include "../../include/M6502/cpu.h"
+#include "../../include/iocomponents/unmappedmemoryexception.h"
 #include <fstream>
+#include <iostream>
 
 Cpu* Cpu::pInstance = nullptr;
 
@@ -25,7 +27,20 @@ Cpu* Cpu::GetInstance()
 void Cpu::Run()
 {
     this->m_halt = false;
-    Run6502(&this->m_cpu);
+    try
+    {
+        Run6502(&this->m_cpu);
+    }
+    catch (const UnmappedMemoryException &e)
+    {
+        // Run6502() executes on a dedicated QThread; an exception escaping it
+        // reaches no event loop and triggers std::terminate() (SIGABRT),
+        // taking down the whole application. Halt the CPU cleanly instead so
+        // a program that touches unimplemented address space doesn't kill
+        // the emulator.
+        std::cerr << "Cpu::Run halted: " << e.what() << std::endl;
+        this->m_halt = true;
+    }
 }
 
 byte Cpu::Read(word address)

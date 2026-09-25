@@ -84,7 +84,7 @@ void AimInspector::SetLedStatus(QString ledStatus)
 
 void AimInspector::SetPrinterStatus(QString printerStatus)
 {
-    this->m_ledStatus = printerStatus;
+    this->m_printerStatus = printerStatus;
     emit printerStatusChanged();
 }
 

@@ -32,8 +32,8 @@ AudioTape::AudioTape() : IOComponentIRQ()
 {
 }
 
-AudioTape::AudioTape(const byte *registers, const word minAddress, const word maxAddress)
-    : IOComponentIRQ(registers, minAddress, maxAddress)
+AudioTape::AudioTape(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress)
+    : IOComponentIRQ(registers, registersSize, minAddress, maxAddress)
 {
 }
 

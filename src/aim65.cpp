@@ -105,7 +105,7 @@ void Aim65::InitialiseMonitorRom()
     const word monitorStartAddr = 0xE000;
     const word monitorEndAddr = 0xFFFF;
     ImageLoader monitorImgLoader(MONITOR_IMAGE_PATH);
-    IOComponent *monitorRom = new IOComponent(monitorImgLoader.ImageContents(), monitorStartAddr, monitorEndAddr);
+    IOComponent *monitorRom = new IOComponent(monitorImgLoader.ImageContents(), monitorImgLoader.GetImageSize(), monitorStartAddr, monitorEndAddr);
     // Remove the printer buffer register so the Printer class can respond.
     //monitorRom->RemoveRegister(0xF08C);
     IOChannel *monitorRomChannel = new IOChannel(IOBus::GetInstance());
@@ -156,12 +156,18 @@ void Aim65::InitialiseKeyboard()
     IOChannel *keyboardChannel = new IOChannel(IOBus::GetInstance());
     keyboardChannel->BindComponent(keyboard);
     keyboard->BindChannel(keyboardChannel);
-    KeyboardProxy *keyboardProxy = new KeyboardProxy(keyboard);
+    // Construct via make_shared so an owning shared_ptr exists before
+    // RegisterProxy() calls shared_from_this() on it.
+    auto keyboardProxy = std::make_shared<KeyboardProxy>(keyboard);
+    keyboardProxy->RegisterProxy();
 }
 
 void Aim65::InitialiseLedDisplay()
 {
-    LedDisplayProxy *proxy = new LedDisplayProxy(5, 4);
+    // Construct via make_shared so an owning shared_ptr exists before
+    // RegisterProxy() calls shared_from_this() on it.
+    auto proxy = std::make_shared<LedDisplayProxy>(5, 4);
+    proxy->RegisterProxy();
     LedDisplay *ledDisplay = new LedDisplay(proxy);
     IOChannel *ledChannel = new IOChannel(IOBus::GetInstance());
     ledChannel->BindComponent(ledDisplay);

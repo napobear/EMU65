@@ -7,7 +7,7 @@ class AudioTape : public IOComponentIRQ
 {
 public:
   AudioTape();
-  AudioTape(const byte *registers, const word minAddress, const word maxAddress);
+  AudioTape(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
   AudioTape(const word minAddress, const word maxAddress);
   ~AudioTape();
 private:

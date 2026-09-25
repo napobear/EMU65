@@ -16,7 +16,7 @@ Printer::Printer() : IOComponentIRQ()
 {
 }
 
-Printer::Printer(const byte *registers, const word minAddress, const word maxAddress) : IOComponentIRQ(registers, minAddress, maxAddress)
+Printer::Printer(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress) : IOComponentIRQ(registers, registersSize, minAddress, maxAddress)
 {
 }
 
@@ -35,6 +35,7 @@ byte Printer::GetRegisterValue(const word address)
         // Intercept print subroutine call.
         this->PrintBuffer();
         // Return something to make the CPU think it's already done everything it needed to.
+        return 0;
     }
     else
     {
@@ -51,12 +52,12 @@ void Printer::PrintBuffer() const
 {
     const int bufferSize = 20;
     int numSetCharacters = 0;
-    byte bufferContents[bufferSize];
+    byte bufferContents[bufferSize] = {};
     for (word i = 0; i < bufferSize; ++i)
     {
+        bufferContents[i] = IOBus::GetInstance()->Read(IBUFM_ADDR + i);
         if (bufferContents[i] > 0)
         {
-            bufferContents[i] = IOBus::GetInstance()->Read(IBUFM_ADDR+i);
             ++numSetCharacters;
         }
     }

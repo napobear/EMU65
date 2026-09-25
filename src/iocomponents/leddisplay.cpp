@@ -62,7 +62,7 @@ const word LedDisplay::DS4_ADDR = 0xAC20;
 const word LedDisplay::DS5_ADDR = 0xAC40;
 const byte LedDisplay::DISPLAY_MASK = LedDisplay::RA_DS1 | LedDisplay::RA_DS2 | LedDisplay::RA_DS3 | LedDisplay::RA_DS4 | LedDisplay::RA_DS5; // 0x3E
 
-LedDisplay::LedDisplay(LedDisplayProxy *proxy)
+LedDisplay::LedDisplay(std::shared_ptr<LedDisplayProxy> proxy)
 {
     for (int i = 0xAC00; i <= 0xAC43; ++i)
     {
@@ -71,11 +71,14 @@ LedDisplay::LedDisplay(LedDisplayProxy *proxy)
 
     this->SetAddressRange();
 
-    this->m_proxy = std::shared_ptr<LedDisplayProxy>(proxy);
+    // Share the caller's existing shared_ptr instead of re-wrapping the raw
+    // pointer, which would create a second, independent control block over
+    // the same LedDisplayProxy object and eventually double-delete it.
+    this->m_proxy = proxy;
 }
 
-LedDisplay::LedDisplay(const byte *registers, const word minAddress, const word maxAddress)
-    : IOComponent(registers, minAddress, maxAddress)
+LedDisplay::LedDisplay(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress)
+    : IOComponent(registers, registersSize, minAddress, maxAddress)
 {
 }
 
@@ -190,12 +193,14 @@ void LedDisplay::SetRegister(word address, byte value)
             // into ASCII chars.
             byte cleanChar = this->m_registers[effectiveRegAddr] >> 1;
 
+#ifdef EMU65_DEBUG
             std::ofstream fout("leddbglog.txt", std::ios_base::out | std::ios_base::app);
             char S[64];
             sprintf(S, "EFF ADDRESS: %04X  VALUE: %02X CLEAN CHAR: %d", effectiveRegAddr, value, cleanChar);
             fout << "[" << AimInspector::CurrentDateTime() << "] " << S;
             fout << std::endl;
             fout.close();
+#endif /* EMU65_DEBUG */
 
             this->m_proxy->triggerDisplayDigitChanged(this->GetDisplayDigitPair(effectiveRegAddr), cleanChar);
         }
@@ -218,11 +223,14 @@ void LedDisplay::OutputCursor()
 {
     for(word addr : this->GetCursorTargetDisplaysFromAddrRegister())
     {
+#ifdef EMU65_DEBUG
         std::ofstream fout("leddbglog.txt", std::ios_base::out | std::ios_base::app);
         char S[64];
         sprintf(S, "ADDRESS: %04X", addr);
+        fout << "[" << AimInspector::CurrentDateTime() << "] " << S;
         fout << std::endl;
         fout.close();
+#endif /* EMU65_DEBUG */
         this->m_proxy->triggerDisplayDigitChanged(this->GetDisplayDigitPair(addr), '*');
     }
 }
