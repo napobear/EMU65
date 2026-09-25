@@ -12,7 +12,7 @@ class IOComponentIRQ : public IOComponent
 public:
     IOComponentIRQ();
 
-    IOComponentIRQ(const byte *registers, const word minAddress, const word maxAddress);
+    IOComponentIRQ(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
 
     IOComponentIRQ(const word minAddress, const word maxAddress);
 

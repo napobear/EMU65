@@ -8,8 +8,8 @@
 class LedDisplay : public IOComponent
 {
 public:
-    LedDisplay(LedDisplayProxy *proxy);
-    LedDisplay(const byte *registers, const word minAddress, const word maxAddress);
+    LedDisplay(std::shared_ptr<LedDisplayProxy> proxy);
+    LedDisplay(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
     LedDisplay(const word minAddress, const word maxAddress);
     void SetRegister(word address, byte value);
     void UpdateDebugStatus(word address);

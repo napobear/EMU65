@@ -16,12 +16,9 @@ ImageLoader::~ImageLoader()
     m_imagestream.close();
 }
 
-unsigned long ImageLoader::GetImageSize()
+unsigned long ImageLoader::GetImageSize() const
 {
-    m_imagestream.seekg(0, std::ios_base::end);
-    unsigned long fileSizeBytes = static_cast<unsigned long>(m_imagestream.tellg());
-    m_imagestream.seekg(0, std::ios_base::beg);
-    return fileSizeBytes;
+    return m_imageSize;
 }
 
 byte* ImageLoader::ImageContents()
@@ -31,20 +28,32 @@ byte* ImageLoader::ImageContents()
 
 void ImageLoader::ReadImageContents()
 {
-    // TODO -- Should return 'false' if reading failed.
-    if (m_imagestream.is_open())
+    if (!m_imagestream.is_open())
     {
-        auto imageSize = this->GetImageSize();
-        auto buffer = std::unique_ptr<char[]>(new char[imageSize]);
-        m_imageContents = std::unique_ptr<byte[]>(new byte[imageSize]);
-
-        if(m_imagestream.good())
-        {
-            m_imagestream.read(buffer.get(), imageSize);
-            for(int i = 0; i < imageSize; ++i)
-            {
-                this->m_imageContents.get()[i] = static_cast<byte>(buffer.get()[i]);
-            }
-        }
+        return;
     }
+
+    m_imagestream.seekg(0, std::ios_base::end);
+    const std::streamoff fileSizeBytes = m_imagestream.tellg();
+    m_imagestream.seekg(0, std::ios_base::beg);
+
+    // tellg()/seekg() report failure via a negative offset (e.g. std::streamoff(-1))
+    // rather than an exception, so this must be checked explicitly: casting a
+    // negative value straight to an unsigned size previously produced a huge
+    // allocation request.
+    if (!m_imagestream.good() || fileSizeBytes <= 0)
+    {
+        return;
+    }
+
+    const auto imageSize = static_cast<std::size_t>(fileSizeBytes);
+    auto buffer = std::make_unique<byte[]>(imageSize);
+    m_imagestream.read(reinterpret_cast<char*>(buffer.get()), static_cast<std::streamsize>(imageSize));
+
+    // Only expose as many bytes as were actually read. A short/truncated read
+    // must never be reported as a full-size image, since callers (e.g.
+    // IOComponent) size their own buffers directly off GetImageSize().
+    const auto bytesRead = static_cast<unsigned long>(m_imagestream.gcount());
+    m_imageContents = std::move(buffer);
+    m_imageSize = bytesRead;
 }

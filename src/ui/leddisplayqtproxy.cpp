@@ -14,8 +14,10 @@ LedDisplayProxy::LedDisplayProxy(int numDisplays, int numDisplayChars, QObject *
         this->m_ledDisplays.push_back(display);
         display.clear();
     }
-
-    this->RegisterProxy();
+    // RegisterProxy() cannot be called here: shared_from_this() requires an
+    // owning shared_ptr to already exist, which is only true once construction
+    // (via std::make_shared at the call site) has completed. Callers must
+    // invoke RegisterProxy() explicitly right after construction.
 }
 
 LedDisplayProxy::~LedDisplayProxy()
@@ -24,7 +26,9 @@ LedDisplayProxy::~LedDisplayProxy()
 
 void LedDisplayProxy::RegisterProxy()
 {
-    UiProxyCollection::GetInstance()->InsertLedDisplayProxy(std::shared_ptr<LedDisplayProxy>(this));
+    // Share the same control block as the caller's owning shared_ptr instead
+    // of constructing an independent std::shared_ptr<LedDisplayProxy>(this).
+    UiProxyCollection::GetInstance()->InsertLedDisplayProxy(this->shared_from_this());
 }
 
 QString LedDisplayProxy::GetLedDisplay()

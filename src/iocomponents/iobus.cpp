@@ -51,11 +51,10 @@ void IOBus::Write(word address, byte value)
 
 byte IOBus::Read(word address)
 {
-    IOChannel* channel = this->GetIOChannel(address);
-    if (channel != nullptr)
-    {
-        return channel->Read(address);
-    }
+    // GetIOChannel() always either returns a valid channel or throws
+    // UnmappedMemoryException; it never returns nullptr. A missing return
+    // here for the "not found" case would be undefined behaviour.
+    return this->GetIOChannel(address)->Read(address);
 }
 
 IOChannel* IOBus::GetIOChannel(word address) const
@@ -100,7 +99,7 @@ IOChannel* IOBus::GetIOChannel(word address) const
 
     if (targetChannel == nullptr)
     {
-        throw UnmappedMemoryException();
+        throw UnmappedMemoryException(address);
     }
 
     return targetChannel;

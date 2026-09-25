@@ -8,7 +8,7 @@ class Printer : public IOComponentIRQ
 {
 public:
     Printer();
-    Printer(const byte *registers, const word minAddress, const word maxAddress);
+    Printer(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
     Printer(const word minAddress, const word maxAddress);
     byte GetRegisterValue(const word address);
     void PrintBuffer() const;

@@ -7,7 +7,7 @@ class Keyboard : public IOComponentIRQ
 {
  public:
   Keyboard();
-  Keyboard(const byte *registers, const word minAddress, const word maxAddress);
+  Keyboard(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
   Keyboard(const word minAddress, const word maxAddress);
   void onKeyPressed(char ch);
   void UpdateDebugStatus(word address);

@@ -10,7 +10,7 @@ class Aim65Controller : public QObject
 {
     Q_OBJECT
 public:
-    Aim65Controller(Aim65Proxy *aim65, QObject *parent = 0);
+    Aim65Controller(std::shared_ptr<Aim65Proxy> aim65, QObject *parent = 0);
 public slots:
     void Start();
 signals:

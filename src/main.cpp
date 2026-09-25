@@ -16,18 +16,21 @@ int main(int argc, char *argv[])
     QQmlApplicationEngine mainWindow("qml/EMU65/main.qml");
     QQmlApplicationEngine aimInspectorWindow("qml/EMU65/aiminspector.qml");
     UiProxyCollection* proxyCollection = UiProxyCollection::GetInstance();
-    Aim65Proxy* aim65Proxy = new Aim65Proxy(Aim65::GetInstance());
-    //Aim65Controller* aim65Controller = new Aim65Controller(aim65Proxy);
 
-    QThread aimThread;
-    aim65Proxy->moveToThread(&aimThread);
-    QObject::connect(&aimThread, SIGNAL(started()), aim65Proxy, SLOT(Start()));
-    aimThread.start();
+    // Construct via make_shared so an owning shared_ptr exists before
+    // RegisterProxy() calls shared_from_this() on it, and so Aim65Controller
+    // can share that same control block instead of re-wrapping a raw pointer.
+    auto aim65Proxy = std::make_shared<Aim65Proxy>(Aim65::GetInstance());
+    aim65Proxy->RegisterProxy();
+    Aim65Controller* aim65Controller = new Aim65Controller(aim65Proxy);
+
     aimInspectorWindow.rootContext()->setContextProperty("aimInspector", AimInspector::GetInstance());
     mainWindow.rootContext()->setContextProperty("aim65", proxyCollection->GetAim65Proxy());
-    //mainWindow.rootContext()->setContextProperty("aim65Controller", aim65Controller);
+    mainWindow.rootContext()->setContextProperty("aim65Controller", aim65Controller);
     mainWindow.rootContext()->setContextProperty("keyboard", proxyCollection->GetKeyboardProxy());
     mainWindow.rootContext()->setContextProperty("ledDisplay", proxyCollection->GetLedDisplayProxy());
+
+    aim65Controller->Start();
 
     return app.exec();
 }

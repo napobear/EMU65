@@ -14,7 +14,7 @@ class Aim65;
  * Obtains and delivers all the necessary basic emulator functions that should be exposed
  * to the user.
  */
-class Aim65Proxy : public QObject, public UiProxy
+class Aim65Proxy : public QObject, public UiProxy, public std::enable_shared_from_this<Aim65Proxy>
 {
     Q_OBJECT
     Q_PROPERTY(bool resetButton
