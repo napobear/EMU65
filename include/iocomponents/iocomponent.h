@@ -43,7 +43,7 @@ class IOComponent
      * @return An AddressRange struct identifying the address space bounds of the IOComponent instance.
      * @see IOChannel::GetAddressRange
      **/
-    std::vector<word> GetAddressRange() const;
+    const std::vector<word>& GetAddressRange() const;
 
     void SetAddressRange();
 

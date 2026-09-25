@@ -45,7 +45,7 @@ byte Printer::GetRegisterValue(const word address)
 
 void Printer::UpdateDebugStatus(word address)
 {
-
+    AimInspector::GetInstance()->UpdatePrinterStatus(this->DumpMemory(address));
 }
 
 void Printer::PrintBuffer() const
