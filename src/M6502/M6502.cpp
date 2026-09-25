@@ -39,7 +39,7 @@
 extern byte *Page[];
 
 /* REMARK (LM) -- Get the opcode from the instruction, masking out the rest of it.  */
-INLINE byte Op6502(register word A)
+INLINE byte Op6502(word A)
 {
   return(Page[A>>13][A&0x1FFF]);
 }
@@ -231,8 +231,8 @@ void Reset6502(M6502 *R)
 #ifdef EXEC6502
 int Exec6502(M6502 *R,int RunCycles)
 {
-  register pair J,K;
-  register byte I;
+  pair J,K;
+  byte I;
 
   /* Execute requested number of cycles */
   while(RunCycles>0)
@@ -269,7 +269,7 @@ int Exec6502(M6502 *R,int RunCycles)
 /*************************************************************/
 void Int6502(M6502 *R,byte Type)
 {
-  register pair J;
+  pair J;
 
   if((Type==INT_NMI)||((Type==INT_IRQ)&&!(R->P&I_FLAG)))
   {
@@ -293,8 +293,8 @@ void Int6502(M6502 *R,byte Type)
 #ifndef EXEC6502
 word Run6502(M6502 *R)
 {
-  register pair J,K;
-  register byte I;
+  pair J,K;
+  byte I;
 
   for(;;)
   {
@@ -364,12 +364,12 @@ word Run6502(M6502 *R)
 /** checks can be skipped to make it fast. It is only       **/
 /** required if there is a #define FAST_RDOP.               **/
 /*************************************************************/
-void Wr6502(register word Addr, register byte Value)
+void Wr6502(word Addr, byte Value)
 {
   cpu->Write(Addr, Value);
 }
 
-byte Rd6502(register word Addr)
+byte Rd6502(word Addr)
 {
   return cpu->Read(Addr);
 }
@@ -381,7 +381,7 @@ byte Rd6502(register word Addr)
 /** INT_NONE, INT_IRQ, INT_NMI, or INT_QUIT to exit the     **/
 /** emulation loop.                                         **/
 /*************************************************************/
-byte Loop6502(register M6502 *R)
+byte Loop6502(M6502 *R)
 {
   return cpu->CheckInterrupts();
 }
@@ -393,7 +393,7 @@ byte Loop6502(register M6502 *R)
 /** function should return 1 if the exception was handled,  **/
 /** or 0 if the opcode was truly illegal.                   **/
 /*************************************************************/
-byte Patch6502(register byte Op, register M6502 *R)
+byte Patch6502(byte Op, M6502 *R)
 {
     return cpu->ProcessUnknownCode();
 }

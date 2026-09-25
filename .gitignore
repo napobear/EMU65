@@ -1,2 +1,36 @@
 # Note di lavoro per Claude Code, non versionate su richiesta dell'utente.
 CLAUDE.md
+
+# Directory di build CMake (out-of-source).
+build/
+build-*/
+CMakeFiles/
+CMakeCache.txt
+CMakeUserPresets.json
+cmake_install.cmake
+compile_commands.json
+install_manifest.txt
+
+# Artefatti di build generici (qmake/MSVC ancora possibili in locale).
+*.o
+*.obj
+*.exe
+*.pdb
+*.ilk
+*.a
+*.so
+*.moc
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+Makefile
+Makefile.Debug
+Makefile.Release
+*.pro.user
+*.pro.user.*
+
+# File temporanei di editor.
+*~
+\#*\#
+.#*

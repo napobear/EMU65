@@ -5,8 +5,15 @@
 
 Cpu* Cpu::pInstance = nullptr;
 
-Cpu::Cpu()
+Cpu::Cpu() : m_cpu()
 {
+    // M6502 is a plain C struct (POD): without value-initializing it here,
+    // fields Reset6502() never touches (IPeriod, IBackup, IAutoReset,
+    // TrapBadOps, Trap, Trace, User) stay indeterminate for the whole run.
+    // IPeriod in particular seeds ICount, which the interpreter loop
+    // decrements to decide when to call Loop6502(); garbage there made CPU
+    // behaviour (and crash symptoms) depend on whatever was previously on
+    // the heap/stack at this address.
     this->m_halt = true;
 }
 

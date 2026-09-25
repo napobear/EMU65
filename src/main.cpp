@@ -3,7 +3,6 @@
 #include <QtGui/QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include "qtquick2applicationviewer.h"
 #include "../include/aim65.h"
 #include "../include/ui/uiproxycollection.h"
 #include "../include/debug/aiminspector.h"
