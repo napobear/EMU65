@@ -1,5 +1,6 @@
 #include <QObject>
 #include <QThread>
+#include <QCoreApplication>
 #include <QtGui/QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
@@ -12,8 +13,20 @@
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    QQmlApplicationEngine mainWindow("qml/EMU65/main.qml");
-    QQmlApplicationEngine aimInspectorWindow("qml/EMU65/aiminspector.qml");
+
+    // Construct engines without a URL and load() them explicitly once every
+    // context property they reference has been set. QQmlApplicationEngine's
+    // (url)-taking constructor loads the component immediately, so setting
+    // context properties afterwards (as this used to do) left aim65,
+    // aim65Controller, keyboard, ledDisplay and aimInspector all undefined
+    // for QML property bindings evaluated at load time.
+    QQmlApplicationEngine mainWindow;
+    QQmlApplicationEngine aimInspectorWindow;
+    QObject::connect(&mainWindow, &QQmlApplicationEngine::objectCreationFailed,
+                      &app, [] { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
+    QObject::connect(&aimInspectorWindow, &QQmlApplicationEngine::objectCreationFailed,
+                      &app, [] { QCoreApplication::exit(-1); }, Qt::QueuedConnection);
+
     UiProxyCollection* proxyCollection = UiProxyCollection::GetInstance();
 
     // Construct via make_shared so an owning shared_ptr exists before
@@ -28,6 +41,9 @@ int main(int argc, char *argv[])
     mainWindow.rootContext()->setContextProperty("aim65Controller", aim65Controller);
     mainWindow.rootContext()->setContextProperty("keyboard", proxyCollection->GetKeyboardProxy());
     mainWindow.rootContext()->setContextProperty("ledDisplay", proxyCollection->GetLedDisplayProxy());
+
+    mainWindow.load(QStringLiteral("qml/EMU65/main.qml"));
+    aimInspectorWindow.load(QStringLiteral("qml/EMU65/aiminspector.qml"));
 
     aim65Controller->Start();
 

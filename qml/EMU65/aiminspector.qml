@@ -21,7 +21,7 @@ ApplicationWindow {
 
             Connections {
                 target: aimInspector
-                onCpuStatusChanged: {
+                function onCpuStatusChanged() {
                     aimInspCpu.text = qsTr("CPU Status: ") + aimInspector.cpuStatus
                 }
             }
@@ -34,7 +34,7 @@ ApplicationWindow {
 
             Connections {
                 target: aimInspector
-                onComponentStatusChanged: {
+                function onComponentStatusChanged() {
                     aimInspComponent.text = qsTr("Memory Contents\n") + aimInspector.componentStatus
                 }
             }
@@ -48,7 +48,7 @@ ApplicationWindow {
 
             Connections {
                 target: aimInspector
-                onLedStatusChanged: {
+                function onLedStatusChanged() {
                     aimInspLed.text = qsTr("LED Registers\n") + aimInspector.ledStatus
                 }
             }
@@ -62,7 +62,7 @@ ApplicationWindow {
 
             Connections {
                 target: aimInspector
-                onPrinterStatusChanged: {
+                function onPrinterStatusChanged() {
                     aimInspPrinter.text = qsTr("Printer Registers:\n") + aimInspector.printerStatus
                 }
             }
@@ -76,7 +76,7 @@ ApplicationWindow {
 
             Connections {
                 target: aimInspector
-                onKeyboardStatusChanged: {
+                function onKeyboardStatusChanged() {
                     aimInspKeyboard.text = qsTr("Keyboard Registers\n") + aimInspector.keyboardStatus
                 }
             }
