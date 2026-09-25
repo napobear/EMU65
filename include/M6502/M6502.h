@@ -75,7 +75,7 @@ typedef struct
 /** starting execution with Run6502(). It sets registers to **/
 /** their initial values.                                   **/
 /*************************************************************/
-void Reset6502(register M6502 *R);
+void Reset6502(M6502 *R);
 
 /** Exec6502() ***********************************************/
 /** This function will execute given number of 6502 cycles. **/
@@ -83,7 +83,7 @@ void Reset6502(register M6502 *R);
 /** negative, and current register values in R.             **/
 /*************************************************************/
 #ifdef EXEC6502
-int Exec6502(register M6502 *R,register int RunCycles);
+int Exec6502(M6502 *R,int RunCycles);
 #endif
 
 /** Int6502() ************************************************/
@@ -91,7 +91,7 @@ int Exec6502(register M6502 *R,register int RunCycles);
 /** INT_NMI will cause a non-maskable interrupt. INT_IRQ    **/
 /** will cause a normal interrupt, unless I_FLAG set in R.  **/
 /*************************************************************/
-void Int6502(register M6502 *R,register byte Type);
+void Int6502(M6502 *R,byte Type);
 
 /** Run6502() ************************************************/
 /** This function will run 6502 code until Loop6502() call  **/
@@ -99,7 +99,7 @@ void Int6502(register M6502 *R,register byte Type);
 /** emulation stopped, and current register values in R.    **/
 /*************************************************************/
 #ifndef EXEC6502
-word Run6502(register M6502 *R);
+word Run6502(M6502 *R);
 #endif
 
 /** Rd6502()/Wr6502/Op6502() *********************************/
@@ -109,9 +109,9 @@ word Run6502(register M6502 *R);
 /** checks can be skipped to make it fast. It is only       **/
 /** required if there is a #define FAST_RDOP.               **/
 /************************************ TO BE WRITTEN BY USER **/
-void Wr6502(register word Addr,register byte Value);
-byte Rd6502(register word Addr);
-byte Op6502(register word Addr);
+void Wr6502(word Addr,byte Value);
+byte Rd6502(word Addr);
+byte Op6502(word Addr);
 
 /** Debug6502() **********************************************/
 /** This function should exist if DEBUG is #defined. When   **/
@@ -119,7 +119,7 @@ byte Op6502(register word Addr);
 /** the CPU, and given the 6502 registers. Emulation exits  **/
 /** if Debug6502() returns 0.                               **/
 /*************************************************************/
-byte Debug6502(register M6502 *R);
+byte Debug6502(M6502 *R);
 
 /** Loop6502() ***********************************************/
 /** 6502 emulation calls this function periodically to      **/
@@ -128,7 +128,7 @@ byte Debug6502(register M6502 *R);
 /** INT_NONE, INT_IRQ, INT_NMI, or INT_QUIT to exit the     **/
 /** emulation loop.                                         **/
 /************************************ TO BE WRITTEN BY USER **/
-byte Loop6502(register M6502 *R);
+byte Loop6502(M6502 *R);
 
 /** Patch6502() **********************************************/
 /** Emulation calls this function when it encounters an     **/
@@ -137,7 +137,7 @@ byte Loop6502(register M6502 *R);
 /** function should return 1 if the exception was handled,  **/
 /** or 0 if the opcode was truly illegal.                   **/
 /************************************ TO BE WRITTEN BY USER **/
-byte Patch6502(register byte Op,register M6502 *R);
+byte Patch6502(byte Op,M6502 *R);
 
 #ifdef __cplusplus
 }
