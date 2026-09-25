@@ -152,11 +152,9 @@ LedDisplay::LedDisplay(const word minAddress, const word maxAddress)
 
 void LedDisplay::UpdateDebugStatus(word address)
 {
-    // See IOComponent::UpdateDebugStatus(): only meaningful (and only safe
-    // to run at CPU speed) when the debug inspector is actually built.
-#ifdef EMU65_DEBUG
+    // See IOComponent::UpdateDebugStatus(): AimInspector coalesces these,
+    // so this is safe to call unconditionally at CPU speed.
     AimInspector::GetInstance()->UpdateLedDisplayStatus(IOComponent::DumpMemory());
-#endif /* EMU65_DEBUG */
 }
 
 void LedDisplay::SetRegister(word address, byte value)

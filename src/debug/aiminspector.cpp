@@ -28,36 +28,54 @@ AimInspector* AimInspector::GetInstance()
 // GUI thread may be mid-read is a data race that showed up as a heap
 // use-after-free (AddressSanitizer caught QV4::Heap::String::append reading
 // memory QString::operator=() had just freed on the CPU thread). Marshal the
-// actual property write over to AimInspector's own thread via a queued
-// invocation instead of mutating it directly from the caller's thread.
+// actual property write over to AimInspector's own thread via a queued,
+// coalesced invocation (see PendingUpdate in the header) instead of mutating
+// it directly from the caller's thread or queuing one event per write.
+void AimInspector::QueueStatusUpdate(PendingUpdate &pending, const QString &value, void (AimInspector::*setter)(QString))
+{
+    {
+        std::lock_guard<std::mutex> lock(pending.mutex);
+        pending.value = value;
+    }
+
+    if (!pending.queued.exchange(true))
+    {
+        QMetaObject::invokeMethod(this, [this, &pending, setter]()
+        {
+            QString latest;
+            {
+                std::lock_guard<std::mutex> lock(pending.mutex);
+                latest = pending.value;
+                pending.queued = false;
+            }
+            (this->*setter)(latest);
+        }, Qt::QueuedConnection);
+    }
+}
+
 void AimInspector::UpdateCpuStatus(const std::string &data)
 {
-    QString qData = QString::fromStdString(data);
-    QMetaObject::invokeMethod(this, [this, qData]() { this->SetCpuStatus(qData); }, Qt::QueuedConnection);
+    QueueStatusUpdate(m_pendingCpuStatus, QString::fromStdString(data), &AimInspector::SetCpuStatus);
 }
 
 void AimInspector::UpdateComponentStatus(const std::string &data)
 {
-    QString qData = QString::fromStdString(data);
-    QMetaObject::invokeMethod(this, [this, qData]() { this->SetComponentStatus(qData); }, Qt::QueuedConnection);
+    QueueStatusUpdate(m_pendingComponentStatus, QString::fromStdString(data), &AimInspector::SetComponentStatus);
 }
 
 void AimInspector::UpdateLedDisplayStatus(const std::string &data)
 {
-    QString qData = QString::fromStdString(data);
-    QMetaObject::invokeMethod(this, [this, qData]() { this->SetLedStatus(qData); }, Qt::QueuedConnection);
+    QueueStatusUpdate(m_pendingLedStatus, QString::fromStdString(data), &AimInspector::SetLedStatus);
 }
 
 void AimInspector::UpdatePrinterStatus(const std::string &data)
 {
-    QString qData = QString::fromStdString(data);
-    QMetaObject::invokeMethod(this, [this, qData]() { this->SetPrinterStatus(qData); }, Qt::QueuedConnection);
+    QueueStatusUpdate(m_pendingPrinterStatus, QString::fromStdString(data), &AimInspector::SetPrinterStatus);
 }
 
 void AimInspector::UpdateKeyboardStatus(const std::string &data)
 {
-    QString qData = QString::fromStdString(data);
-    QMetaObject::invokeMethod(this, [this, qData]() { this->SetKeyboardStatus(qData); }, Qt::QueuedConnection);
+    QueueStatusUpdate(m_pendingKeyboardStatus, QString::fromStdString(data), &AimInspector::SetKeyboardStatus);
 }
 
 QString AimInspector::GetComponentStatus() const
