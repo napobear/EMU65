@@ -102,7 +102,16 @@ void IOComponent::SetRegister(word address, byte value)
 
 void IOComponent::UpdateDebugStatus(word address)
 {
+    // SetRegister() calls this unconditionally on every single write (i.e.
+    // on every CPU store to RAM, not just I/O registers). Left ungated, this
+    // posts a queued cross-thread call to AimInspector (on the GUI thread)
+    // for every one of those writes, at whatever speed the unthrottled 6502
+    // interpreter runs -- easily millions per second, flooding the GUI
+    // thread's event queue and starving it of user input (clicks appear to
+    // hang). Only do any of this when the debug inspector is actually built.
+#ifdef EMU65_DEBUG
     AimInspector::GetInstance()->UpdateComponentStatus(this->DumpMemory(address));
+#endif /* EMU65_DEBUG */
 }
 
 std::string IOComponent::DumpMemory()
