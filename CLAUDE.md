@@ -101,6 +101,35 @@ Progetto storico (~11 anni), attualmente basato su qmake e in fase di modernizza
     dell'app (`QT_QPA_PLATFORM=offscreen ./EMU65`, dato che l'ambiente non
     ha un display), non solo la compilazione.
 
+11. **La coda di eventi del thread CPU è bloccata per tutto il tempo in
+    cui gira l'interprete** (`Run6502()` è chiamato dentro uno slot): un
+    `invokeMethod(..., Qt::QueuedConnection)` verso un `QObject` che vive
+    lì (es. `Aim65Proxy`) viene eseguito solo quando `Run()` ritorna.
+    Vale per power off/on (`Cpu::Halt()` è atomico e fa uscire il loop,
+    poi gli slot in coda partono in ordine) ma **non** per dati da
+    condividere in tempo reale con la CPU: reset e STEP usano flag
+    atomici letti da `Cpu::CheckInterrupts()`. Dati scritti dalla GUI e
+    letti dalla CPU (tastiera) vanno protetti con un mutex locale al
+    componente, non marshallati sul thread CPU.
+
+12. **Power cycle: azzerare lo stato che vive fuori dalla RAM.** Un tasto
+    premuto a macchina spenta lasciava la linea IRQ alta
+    (`Keyboard::onKeyPressed` la alza anche a CPU ferma); al Power ON
+    l'IRQ pendente veniva servito con la RAM azzerata (vettori a zero) e
+    il boot finiva nel loop BRK→IRQ→`JMP($A404)`→0 (`PC:0002` nel
+    debugger). `Aim65::ClearVolatileMemory()` ora abbassa la linea IRQ e
+    `main.qml` scarta i tasti finché `aim65Controller.powerOn` è falso.
+    Ogni nuovo stato di periferica va azzerato lì.
+
+13. **ThreadSanitizer è il complemento di ASan per le race** (ASan non le
+    vede): `-DCMAKE_CXX_FLAGS="-fsanitize=thread -g -O1"` con
+    `-DCMAKE_EXE_LINKER_FLAGS="-fsanitize=thread"`, in una cartella di
+    build a parte (`build-tsan`, già ignorata da git). Le librerie Qt non
+    sono instrumentate: le segnalazioni su `AimInspector::QueueStatusUpdate`
+    (`aiminspector.cpp:47/51`, blocco heap del functor passato a
+    `invokeMethod`) e quelle dentro Qt/Mesa/dbus sono falsi positivi noti.
+    Con `TSAN_OPTIONS="log_path=..."` i report vanno su file.
+
 ## Workflow concordato con l'utente per questo tipo di lavoro
 - Fix di sicurezza e correzioni di bug vanno su un branch dedicato e
   committati separatamente dalla modernizzazione del build system.
@@ -140,10 +169,48 @@ Progetto storico (~11 anni), attualmente basato su qmake e in fase di modernizza
   processo moriva subito per l'eccezione non gestita della fase di
   sicurezza — vedi regole 8 e 9 sopra: struct `M6502` non inizializzata e
   race condition cross-thread su `AimInspector`.
+- [x] **Copia di `qml/` e `res/` nella cartella di build** (PR #11): prima
+  era un passo `POST_BUILD` del target `EMU65`, eseguito solo quando il
+  binario veniva ricollegato — modificando solo un `.qml`, `cmake --build`
+  non faceva nulla e l'app caricava la copia vecchia. Ora è un target a sé
+  (`EMU65_runtime_files`) che dipende da tutti i file sotto `qml/` e `res/`
+  (glob con `CONFIGURE_DEPENDS`, tracciato da `runtime_files.stamp`).
+  Verificato: rebuild senza modifiche → `no work to do`; modifica di un
+  solo `.qml` → ricopia senza relink.
+
+## Finestra del debugger (`aiminspector.qml`) — note
+- I pannelli LED/Keyboard/Printer Registers stanno in un proprio
+  `ScrollView` che divide l'altezza a metà con "Memory Contents" (PR #10).
+  Prima erano in un `RowLayout` senza limite di altezza: dopo il fix del
+  reset il pannello LED mostra tutto `0xAC00-0xAC43` (~70 righe) e
+  spingeva "Memory Contents" fuori dalla finestra, facendolo sembrare
+  sparito. Se si aggiungono pannelli, mantenere altezze limitate/scrollabili.
+- Il dump "Memory Contents" **non scorre più continuamente** come prima di
+  PR #8, ed è corretto così: quello scorrimento era il loop spurio
+  BRK→IRQ che scriveva di continuo nello stack. Dopo un boot reale il
+  monitor attende input e scrive in RAM solo occasionalmente; il pannello
+  mostra l'ultima zona scritta (tipicamente lo stack, `01Ex-01Fx`).
+
+## Pannello frontale (`aim65controller`, `main.qml`) — note
+- `Aim65Controller` espone `powerOn`, `stepMode`, `ttyMode` al QML; RESET,
+  le due leve e il menu Computer li usano. Verificato con xcb + screenshot
+  (`xdotool`/`spectacle`) e sotto ASan/UBSan/TSan.
+- **Reset**: `Cpu::RequestReset()` alza un flag atomico, servito da
+  `Cpu::CheckInterrupts()` sul thread CPU (con `IPeriod` a 0 viene
+  chiamato dopo ogni istruzione). RAM preservata (warm start del monitor).
+- **Power OFF/ON**: `Halt()` + slot in coda `PowerOff()`/`PowerOn()`;
+  ON azzera RAM e RIOT RAM del monitor e la linea IRQ (regola 12).
+- **STEP**: NMI dopo ogni istruzione con `OpPC < 0xE000` (`M6502::OpPC`,
+  campo aggiunto da EMU65). **Non ancora verificato con un programma
+  utente reale**: il boot resta sano, ma il single-step vero non è stato
+  osservato.
+- **KB/TTY**: solo la posizione della leva, l'interfaccia TTY non è
+  emulata.
 
 ## Prossimi passi
 - Valutare `qt_add_qml_module`/risorse Qt embedded al posto della copia
-  `qml/`+`res/` post-build, se si vuole un pacchetto singolo deployabile.
+  di `qml/`+`res/` accanto al binario (target `EMU65_runtime_files`), se
+  si vuole un pacchetto singolo deployabile.
 - `EMU65_harmattan.desktop` è specifico per Nokia Harmattan (piattaforma
   dismessa da oltre un decennio): valutare se rimuoverlo o tenerlo solo
   come nota storica.
@@ -178,6 +245,12 @@ Progetto storico (~11 anni), attualmente basato su qmake e in fase di modernizza
   da bindings QML sul thread GUI, senza `QMetaObject::invokeMethod(...,
   Qt::QueuedConnection)`: stesso pattern di race condition già corretto
   altrove in questa sessione, qui non ancora applicato.
+  **Aggiornamento**: la race (`LedDisplayProxy::m_ledDisplays` scritto dal
+  thread CPU e letto da `GetLedDisplay()` sul thread GUI, emissione diretta
+  del segnale) è stata corretta con un mutex e `invokeMethod` in coda,
+  confermata da TSan. **Non è stato verificato se il display principale
+  ora si popola**: se resta vuoto la causa è un'altra, e il sospetto
+  passa alla condizione W/CE di `SetRegister()` descritta sopra.
 
 - **[RISOLTO in una sessione precedente di questo task, poi corretto per
   davvero]** L'ipotesi iniziale ("la CPU resta bloccata indefinitamente

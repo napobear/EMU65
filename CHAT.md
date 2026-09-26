@@ -10,10 +10,11 @@ problemi noti) — i due file sono complementari: `CLAUDE.md` è la
 "documentazione tecnica", `CHAT.md` è il "diario di sessione". Entrambi
 sono tracciati in git.
 
-**Stato repo a fine sessione**: branch `master`, ultimo commit `1f638bf`
-(merge PR #8). Working tree pulito. Tutte le PR di questa sessione (#1-#8)
-sono state mergiate in `master` e i branch corrispondenti eliminati sia in
-locale che su `origin`. Resta su `origin` un branch preesistente `qt6` (non
+**Stato repo a fine sessione**: branch `master`, ultimo commit `d18bc8e`
+(merge PR #11). Tutte le PR della giornata (#1-#11) sono state mergiate in
+`master` e i branch corrispondenti eliminati sia in locale che su
+`origin`. Le modifiche a `CLAUDE.md`/`CHAT.md` con il riepilogo di §8
+potrebbero essere ancora da committare (controllare `git status`). Resta su `origin` un branch preesistente `qt6` (non
 creato in questa sessione, mai toccato — vecchio tentativo di porting,
 fermo al commit `0d9540f`, precedente a tutto il lavoro di oggi).
 
@@ -235,6 +236,9 @@ Read → per tracciare l'esecuzione reale, log temporaneo su `Cpu::Read()`/
 | #6 | `fix/debugger-layout-and-live-updates` | Fix debugger window layout and restore live memory scrolling | `c66fd2b` |
 | #7 | `fix/debugger-contrast-and-status-panels` | Fix debugger contrast, wire up status panels, fix DumpMemory perf bug | `de66971` |
 | #8 | `fix/cpu-reset-vector-not-loaded` | Fix the actual root cause of the boot hang: Cpu::Reset() was never called | `1f638bf` |
+| #9 | `docs/claude-notes` | Track CLAUDE.md and CHAT.md in git | `1dfe05e` |
+| #10 | `fix/debugger-memory-panel-hidden` | Keep the debugger's Memory Contents panel visible | `229f8cf` |
+| #11 | `fix/cmake-copy-qml-on-change` | Copy qml/ and res/ to the build dir whenever they change | `d18bc8e` |
 
 Tutte su `github.com/napobear/EMU65`, workflow ripetuto identico ogni
 volta: branch dedicato → commit descrittivo → push → `gh pr create` →
@@ -264,3 +268,69 @@ locale e remoto.
   interpretare i risultati di un nuovo test (in questa sessione mi è
   capitato più volte di misurare/osservare un processo stantio invece di
   quello appena ricompilato).
+
+
+## 8. Seconda parte della giornata (2026-09-26) — PR #9, #10, #11
+
+### PR #9 (`docs/claude-notes`) — `CLAUDE.md` e `CHAT.md` in git
+Su richiesta dell'utente i due file di note sono ora versionati: tolti da
+`.gitignore` e aggiornate le frasi che dicevano il contrario.
+
+### PR #10 (`fix/debugger-memory-panel-hidden`) — "Memory Contents" sparito
+Segnalazione: nella finestra del debugger non si vedevano più scorrere le
+locazioni di memoria. Screenshot della finestra (720x640): il pannello
+c'era ancora, ma **fuori dalla finestra**. Dopo il fix del reset (PR #8)
+il pannello "LED Registers" mostra l'intero range `0xAC00-0xAC43` (~70
+righe) in un `RowLayout` senza limite di altezza, e spingeva "Memory
+Contents" sotto il bordo. Fix: i tre pannelli registri in un proprio
+`ScrollView`, con `Layout.preferredHeight: 1` sia su quello sia sullo
+`ScrollView` della memoria (dividono l'altezza a metà). Verificato con
+screenshot: entrambi visibili, memoria sullo stack `01E6-01F6`.
+
+Nota importante: il dump **non scorre più di continuo** e non è un bug —
+lo scorrimento di prima era il loop spurio BRK→IRQ (§4, PR #8) che
+scriveva sullo stack senza sosta. Ora il monitor fa il boot e attende un
+tasto.
+
+### PR #11 (`fix/cmake-copy-qml-on-change`) — QML stantio nel build
+Emerso durante la verifica della PR #10: dopo aver modificato
+`aiminspector.qml`, `cmake --build build` rispondeva `no work to do` e
+l'app caricava ancora il QML vecchio. La copia di `qml/`+`res/` era un
+`POST_BUILD` del target `EMU65`, eseguito solo al relink. Ora è un target
+separato `EMU65_runtime_files` con uno stamp file che dipende da tutti i
+file sotto `qml/` e `res/` (`file(GLOB_RECURSE ... CONFIGURE_DEPENDS)`).
+Verificato su una build pulita: nessuna modifica → nulla da fare;
+modifica di un `.qml` → solo ricopia, niente relink; smoke test
+`offscreen` vivo dopo 8 s.
+
+### Stato del problema aperto (§5)
+Invariato: il display LED della finestra principale resta vuoto. Oggi non
+è stato indagato; le ipotesi di §5 restano il punto di partenza.
+
+
+## 9. Pannello frontale, race e sanitizer (2026-09-26, branch `feature/front-panel-controls`)
+
+Obiettivo: far funzionare RESET, power, RUN/STEP e KB/TTY. Ripreso da un
+lavoro non committato (e non verificato) trovato nel working tree.
+
+- **Verifica reale** con `QT_QPA_PLATFORM=xcb`: `xdotool` per i click,
+  `spectacle -b -n -f -o file.png` per lo schermo intero (`import -window`
+  su xcb restituiva immagini stantie o falliva sulla root), `magick` per
+  ritagliare/affiancare. Il menu popup non compare nella cattura della
+  sola finestra: serve lo schermo intero.
+- **Bug trovato**: tasto premuto a macchina spenta → Power ON bloccato in
+  `PC:0002` (loop BRK, regola 12 di CLAUDE.md). Causa: IRQ pendente della
+  tastiera servito con la RAM appena azzerata. Fix: `ClearIRQLine()` in
+  `ClearVolatileMemory()` + tasti scartati in QML a macchina spenta.
+  Riprodotto prima, verificato dopo.
+- **ASan/UBSan**: scenario completo + stress (raffiche di tasti, power
+  toggle ravvicinati), nessun errore.
+- **TSan** (`build-tsan`): 32 segnalazioni, di cui 5 vere nel codice del
+  progetto — `LedDisplayProxy` (vettore LED), `Keyboard`
+  (`DRB2`) e `IOBus::m_irqLine`. Corrette in un commit separato
+  (mutex locale al componente, atomico, `invokeMethod` in coda). Restano
+  solo le segnalazioni su `AimInspector::QueueStatusUpdate`, falsi
+  positivi (Qt non instrumentato).
+- **Cosa NON è stato verificato**: single-step reale in modalità STEP con
+  un programma utente; se il display LED principale ora si popola.
+- Commit: `0af2a37` (controlli), `d86651d` (race), più questo delle note.
