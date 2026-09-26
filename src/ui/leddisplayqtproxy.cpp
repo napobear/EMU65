@@ -36,6 +36,7 @@ QString LedDisplayProxy::GetLedDisplay()
 {
     std::string holder = "";
 
+    std::lock_guard<std::mutex> lock(this->m_mutex);
     for(auto display : this->m_ledDisplays)
     {
         for (auto character : display)
@@ -65,15 +66,23 @@ void LedDisplayProxy::triggerDisplayDigitChanged(std::pair<int,int> displayDigit
     {
         return;
     }
-    this->SetLedDisplayChar(displayDigitPair, data);
-    emit displayDigitChanged();
+    {
+        std::lock_guard<std::mutex> lock(this->m_mutex);
+        this->SetLedDisplayChar(displayDigitPair, data);
+    }
+    // Called on the CPU thread: QML bindings on displayDigitChanged() must
+    // run on the GUI thread, where this object lives.
+    QMetaObject::invokeMethod(this, &LedDisplayProxy::displayDigitChanged, Qt::QueuedConnection);
 }
 
 void LedDisplayProxy::Clear()
 {
-    for (auto &display : this->m_ledDisplays)
     {
-        std::fill(display.begin(), display.end(), 0);
+        std::lock_guard<std::mutex> lock(this->m_mutex);
+        for (auto &display : this->m_ledDisplays)
+        {
+            std::fill(display.begin(), display.end(), 0);
+        }
     }
-    emit displayDigitChanged();
+    QMetaObject::invokeMethod(this, &LedDisplayProxy::displayDigitChanged, Qt::QueuedConnection);
 }

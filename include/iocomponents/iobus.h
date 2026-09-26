@@ -8,6 +8,7 @@
 #ifndef IOBUS_H
 #define IOBUS_H
 
+#include <atomic>
 #include <vector>
 #include <memory>
 #include "../globals.h"
@@ -100,7 +101,8 @@ private:
      * @see IOBus::ClearIRQLine
      * @see IOBus::IRQLine
      */
-    bool m_irqLine;
+    // Written by the GUI thread (keyboard) and read by the CPU thread.
+    std::atomic<bool> m_irqLine;
     // bool m_nmiLine;
     DISALLOW_COPY_AND_ASSIGN(IOBus);
     IOBus();

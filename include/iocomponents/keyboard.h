@@ -1,6 +1,7 @@
 #ifndef KEYBOARD_H
 #define KEYBOARD_H
 
+#include <mutex>
 #include "iocomponentirq.h"
 
 class Keyboard : public IOComponentIRQ
@@ -9,7 +10,12 @@ class Keyboard : public IOComponentIRQ
   Keyboard();
   Keyboard(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
   Keyboard(const word minAddress, const word maxAddress);
+  /**
+   * Called from the GUI thread; the CPU thread reads the same registers.
+   */
   void onKeyPressed(char ch);
+  byte GetRegisterValue(word address) override;
+  void SetRegister(word address, byte value) override;
   void UpdateDebugStatus(word address);
  private:
     // Keyboard address bounds: 0xA480-0xA497.
@@ -24,6 +30,10 @@ class Keyboard : public IOComponentIRQ
     const word RINT_ADDR = 0xA486;
     const word ENPA7_ADDR = 0xA486;
     const word EPPA7_ADDR = 0xA487;
+
+    // Recursive: SetRegister() -> UpdateDebugStatus() dumps registers of
+    // this same component while the lock is held.
+    std::recursive_mutex m_mutex;
 
     DISALLOW_COPY_AND_ASSIGN(Keyboard);
 

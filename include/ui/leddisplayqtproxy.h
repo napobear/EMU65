@@ -2,6 +2,7 @@
 #define LEDDISPLAYQTPROXY_H
 
 #include <QObject>
+#include <mutex>
 #include <vector>
 #include "../globals.h"
 #include "../ui/uiproxy.h"
@@ -38,6 +39,8 @@ signals:
      */
     void displayDigitChanged();
 private:
+    // m_ledDisplays is written by the CPU thread and read by the GUI thread.
+    std::mutex m_mutex;
     std::vector< std::vector<byte> > m_ledDisplays;
     int m_numDisplays;
     int m_numDisplayChars;
