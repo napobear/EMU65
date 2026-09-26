@@ -201,11 +201,40 @@ Progetto storico (~11 anni), attualmente basato su qmake e in fase di modernizza
 - **Power OFF/ON**: `Halt()` + slot in coda `PowerOff()`/`PowerOn()`;
   ON azzera RAM e RIOT RAM del monitor e la linea IRQ (regola 12).
 - **STEP**: NMI dopo ogni istruzione con `OpPC < 0xE000` (`M6502::OpPC`,
-  campo aggiunto da EMU65). **Non ancora verificato con un programma
-  utente reale**: il boot resta sano, ma il single-step vero non è stato
-  osservato.
+  campo aggiunto da EMU65). **Verificato lato emulatore** (traccia
+  temporanea in `CheckInterrupts()`, programma in RAM a `0x0200`, `$A402`
+  puntato a un `RTI` della ROM): un NMI per istruzione utente, ritorno
+  all'indirizzo giusto, registri e memoria corretti, le istruzioni ROM non
+  generano NMI. **Non verificato**: come il Monitor riprende dopo l'NMI
+  (comando dalla tastiera); ora che la tastiera è a matrice si può provare.
 - **KB/TTY**: solo la posizione della leva, l'interfaccia TTY non è
   emulata.
+
+## Tastiera (`Keyboard`, `KeyboardProxy`) — matrice 8x8
+Il Monitor NON legge ASCII: scandisce una matrice. Scrive su `A480` (DRA2)
+uno zero rotante (`7F,BF,DF,EF,F7,FB,FD,FE`, una colonna per volta, attivo
+basso) e legge le righe da `A482` (DRB2): bit basso = tasto premuto, `FF` a
+riposo. Il carattere è `KEY_TABLE[riga*8 + colonna]`, la tabella ROM a
+`0xF421` (copiata in `keyboard.cpp`). Riga 0, colonne 4-6 sono i modificatori
+(4 = CTRL, 5/6 = SHIFT); lo SHIFT lo applica la ROM stessa al carattere base
+(`0xECA4-0xECBF`), quindi `Keyboard::FindKey` inverte anche quella logica.
+- `Keyboard::GetRegisterValue(DRB2)` calcola le righe dallo strobe corrente in
+  `A480` e dal tasto premuto; il valore scritto in `A482` non conta (su un
+  6532 con DDRB=0 la lettura riflette i pin). Il costruttore azzerava
+  `A482` e la ROM lo riazzerava all'init (`STA $A480,X` a `0xE0D7`): la
+  routine `0xECEF` aspetta `A482 == FF` prima di scandire, quindi il boot
+  restava fermo a `PC:EC42` (bug esistente da sempre, invisibile finché la
+  tastiera scriveva ASCII).
+- Nessun IRQ da tastiera: il Monitor fa polling.
+- `KeyboardProxy::keyDown(key, text)`/`keyUp()` (QML `Keys.onPressed/
+  onReleased`, autorepeat ignorato) mappano Return→0D, Backspace→08,
+  Delete→7F, Esc→1B, F1-F3→`[` `]` `^`, altrimenti `text` in maiuscolo. Il
+  rilascio è ritardato a un minimo di 40 ms perché il debounce della ROM
+  (scan, attesa, riscansione) non perda un tap veloce.
+- Verifica: traccia temporanea (mai committata) sul `RTS` a `0xECEB` che
+  stampa `A`: `a→41`, `1→31`, `Shift+1→21`, Return→`0D`, Backspace→`08`,
+  `F1→5B`, `.`→`2E` ecc. CTRL non è mappato. Lo `Shift+,` su layout
+  italiano dà `;` perché è già il carattere prodotto dal PC.
 
 ## Prossimi passi
 - Valutare `qt_add_qml_module`/risorse Qt embedded al posto della copia
@@ -251,6 +280,11 @@ Progetto storico (~11 anni), attualmente basato su qmake e in fase di modernizza
   confermata da TSan. **Non è stato verificato se il display principale
   ora si popola**: se resta vuoto la causa è un'altra, e il sospetto
   passa alla condizione W/CE di `SetRegister()` descritta sopra.
+  **Aggiornamento 2** (tastiera a matrice): il boot ora arriva al ciclo di
+  scansione e i registri LED (`AC00-AC03`) cambiano dopo i tasti (es. `AC02`
+  da `BC` a `DE`), ma **il display principale resta comunque vuoto**. La
+  causa non era la tastiera; si può ora indagare `LedDisplay::SetRegister`
+  con il monitor che risponde davvero ai tasti.
 
 - **[RISOLTO in una sessione precedente di questo task, poi corretto per
   davvero]** L'ipotesi iniziale ("la CPU resta bloccata indefinitamente
@@ -293,11 +327,6 @@ Progetto storico (~11 anni), attualmente basato su qmake e in fase di modernizza
   è un altro candidato: un array piatto indicizzato da `address - minAddress`
   sarebbe O(1) invece di O(log n) per ogni accesso a registro.
 
-- `qml/EMU65/main.qml`: `Keys.onPressed` assegna `event.key` (un valore
-  dell'enum `Qt::Key`, es. `Qt::Key_Escape = 0x01000000`) direttamente alla
-  proprietà `pressedKey` di tipo `char` — troncamento implicito che produce
-  valori errati per tasti speciali. Da rivedere quando si lavora sulla
-  gestione della tastiera.
 - `FilePrinter::DEFAULT_PRINTING_PATH` (`"../../res/printer.txt"`) è un
   percorso relativo hardcoded, risolto rispetto alla working directory del
   processo, non alla posizione dell'eseguibile: fragile se l'app viene
