@@ -90,6 +90,7 @@ void Aim65::InitialiseRamMemory()
     IOComponent *ramMemory = new IOComponent(ramStartAddr, ramEndAddr);
     IOChannel *ramChannel = new IOChannel(IOBus::GetInstance());
     ramChannel->BindComponent(ramMemory);
+    this->m_ram = ramMemory;
 }
 
 void Aim65::InitialiseRom()
@@ -122,6 +123,7 @@ void Aim65::InitialiseMonitorRiotRam()
     IOComponent *monitorRam = new IOComponent(monitorRamStartAddr, monitorRamEndAddr);
     IOChannel *monitorRamChannel = new IOChannel(IOBus::GetInstance());
     monitorRamChannel->BindComponent(monitorRam);
+    this->m_monitorRam = monitorRam;
 }
 
 void Aim65::InitialisePrinter()
@@ -186,4 +188,22 @@ void Aim65::SetPowerSwitch(bool newState)
 void Aim65::SetRunStepSwitch(bool newState)
 {
     this->m_panel.runStepSwitch = newState;
+}
+
+void Aim65::ClearVolatileMemory()
+{
+    // Without this a power cycle would behave like a warm reset: the
+    // Monitor's reset routine compares its RIOT RAM vectors (0xA402...)
+    // against the ROM defaults to tell a cold start from a warm one.
+    // A key pressed just before power-off leaves the IRQ line high; served
+    // after a cold start (RAM vectors zeroed) it would land in a BRK loop.
+    IOBus::GetInstance()->ClearIRQLine();
+    if (this->m_ram != nullptr)
+    {
+        this->m_ram->ZeroRegisters();
+    }
+    if (this->m_monitorRam != nullptr)
+    {
+        this->m_monitorRam->ZeroRegisters();
+    }
 }

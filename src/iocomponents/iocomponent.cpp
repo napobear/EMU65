@@ -165,6 +165,14 @@ void IOComponent::Clear()
     }
 }
 
+void IOComponent::ZeroRegisters()
+{
+    for (auto &kvp : this->m_registers)
+    {
+        kvp.second = 0;
+    }
+}
+
 void IOComponent::RemoveRegister(word address)
 {
     /*this->m_addressRange.erase(address);

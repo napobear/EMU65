@@ -56,6 +56,18 @@ void Keyboard::UpdateDebugStatus(word address)
     AimInspector::GetInstance()->UpdateKeyboardStatus(this->DumpMemory(address));
 }
 
+byte Keyboard::GetRegisterValue(word address)
+{
+    std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
+    return IOComponentIRQ::GetRegisterValue(address);
+}
+
+void Keyboard::SetRegister(word address, byte value)
+{
+    std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
+    IOComponentIRQ::SetRegister(address, value);
+}
+
 // TOTHINK -- Where should I hook up F1, F2 and F3?
 void Keyboard::onKeyPressed(char ch)
 {

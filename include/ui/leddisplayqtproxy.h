@@ -2,6 +2,7 @@
 #define LEDDISPLAYQTPROXY_H
 
 #include <QObject>
+#include <mutex>
 #include <vector>
 #include "../globals.h"
 #include "../ui/uiproxy.h"
@@ -27,6 +28,10 @@ public:
     Q_INVOKABLE QString GetLedDisplay();
     virtual void RegisterProxy();
     void triggerDisplayDigitChanged(std::pair<int,int> displayDigitPair, byte data);
+    /**
+     * Blanks every digit (display powered off).
+     */
+    void Clear();
 public slots:
 signals:
     /**
@@ -34,6 +39,8 @@ signals:
      */
     void displayDigitChanged();
 private:
+    // m_ledDisplays is written by the CPU thread and read by the GUI thread.
+    std::mutex m_mutex;
     std::vector< std::vector<byte> > m_ledDisplays;
     int m_numDisplays;
     int m_numDisplayChars;

@@ -63,6 +63,11 @@ class IOComponent
      * Clears the contents of the instance registers completely.
      */
     void Clear();
+    /**
+     * Sets every register back to 0, keeping the address mapping (unlike
+     * Clear()). Used to wipe RAM on a power cycle.
+     */
+    void ZeroRegisters();
 
     void RemoveRegister(word address);
 

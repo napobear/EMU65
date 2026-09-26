@@ -5,7 +5,12 @@
 
 Cpu* Cpu::pInstance = nullptr;
 
-Cpu::Cpu() : m_cpu()
+// In STEP mode the AIM-65 hardware raises an NMI after each instruction
+// fetched outside the Monitor ROM, so the Monitor's own NMI handler (and the
+// code it runs while waiting for a key) is never itself single-stepped.
+static const word MONITOR_ROM_START = 0xE000;
+
+Cpu::Cpu() : m_cpu(), m_halt(true), m_resetRequested(false), m_stepMode(false)
 {
     // M6502 is a plain C struct (POD): without value-initializing it here,
     // fields Reset6502() never touches (IPeriod, IBackup, IAutoReset,
@@ -14,7 +19,6 @@ Cpu::Cpu() : m_cpu()
     // decrements to decide when to call Loop6502(); garbage there made CPU
     // behaviour (and crash symptoms) depend on whatever was previously on
     // the heap/stack at this address.
-    this->m_halt = true;
 }
 
 Cpu::~Cpu()
@@ -143,11 +147,23 @@ void Cpu::ServiceNMI()
     this->ServiceInterrupt(INT_NMI);
 }
 
+// Called by Loop6502() on the CPU thread. With IPeriod left at 0 that
+// happens after every single instruction, which is what gives RESET and
+// STEP instruction-level granularity here.
 byte Cpu::CheckInterrupts()
 {
     if (this->m_halt)
     {
         return INT_QUIT;
+    }
+    else if (this->m_resetRequested.exchange(false))
+    {
+        Reset6502(&this->m_cpu);
+        return INT_NONE;
+    }
+    else if (this->m_stepMode && this->m_cpu.OpPC < MONITOR_ROM_START)
+    {
+        return INT_NMI;
     }
     else if (m_channel->ReadIRQLineState())
     {
@@ -175,4 +191,14 @@ void Cpu::BindChannel(CpuChannel *channel)
 void Cpu::Halt()
 {
     this->m_halt = true;
+}
+
+void Cpu::RequestReset()
+{
+    this->m_resetRequested = true;
+}
+
+void Cpu::SetStepMode(bool stepMode)
+{
+    this->m_stepMode = stepMode;
 }
