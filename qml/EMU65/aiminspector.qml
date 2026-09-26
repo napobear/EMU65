@@ -39,59 +39,64 @@ ApplicationWindow {
             }
         }
 
-        RowLayout {
+        // Once the CPU boots properly the LED panel alone dumps the whole
+        // 0xAC00-0xAC43 range (~70 lines), which used to push "Memory
+        // Contents" below the bottom of the window. Give the register panels
+        // their own scrollable area sharing the height equally with the
+        // memory dump (preferredHeight: 1 on both = same stretch ratio).
+        ScrollView {
             Layout.fillWidth: true
-            spacing: 16
+            Layout.fillHeight: true
+            Layout.preferredHeight: 1
+            clip: true
 
-            Text {
-                id: aimInspLed
-                Layout.alignment: Qt.AlignTop
-                font.family: "monospace"
-                color: root.textColor
-                text: qsTr("LED Registers\n")
+            RowLayout {
+                spacing: 16
 
-                Connections {
-                    target: aimInspector
-                    function onLedStatusChanged() {
-                        aimInspLed.text = qsTr("LED Registers\n") + aimInspector.ledStatus
+                Text {
+                    id: aimInspLed
+                    Layout.alignment: Qt.AlignTop
+                    font.family: "monospace"
+                    color: root.textColor
+                    text: qsTr("LED Registers\n")
+
+                    Connections {
+                        target: aimInspector
+                        function onLedStatusChanged() {
+                            aimInspLed.text = qsTr("LED Registers\n") + aimInspector.ledStatus
+                        }
                     }
                 }
-            }
 
-            Text {
-                id: aimInspKeyboard
-                Layout.alignment: Qt.AlignTop
-                font.family: "monospace"
-                color: root.textColor
-                text: qsTr("Keyboard Registers\n")
+                Text {
+                    id: aimInspKeyboard
+                    Layout.alignment: Qt.AlignTop
+                    font.family: "monospace"
+                    color: root.textColor
+                    text: qsTr("Keyboard Registers\n")
 
-                Connections {
-                    target: aimInspector
-                    function onKeyboardStatusChanged() {
-                        aimInspKeyboard.text = qsTr("Keyboard Registers\n") + aimInspector.keyboardStatus
+                    Connections {
+                        target: aimInspector
+                        function onKeyboardStatusChanged() {
+                            aimInspKeyboard.text = qsTr("Keyboard Registers\n") + aimInspector.keyboardStatus
+                        }
                     }
                 }
-            }
 
-            Text {
-                id: aimInspPrinter
-                Layout.alignment: Qt.AlignTop
-                font.family: "monospace"
-                color: root.textColor
-                text: qsTr("Printer Registers:\n")
+                Text {
+                    id: aimInspPrinter
+                    Layout.alignment: Qt.AlignTop
+                    font.family: "monospace"
+                    color: root.textColor
+                    text: qsTr("Printer Registers:\n")
 
-                Connections {
-                    target: aimInspector
-                    function onPrinterStatusChanged() {
-                        aimInspPrinter.text = qsTr("Printer Registers:\n") + aimInspector.printerStatus
+                    Connections {
+                        target: aimInspector
+                        function onPrinterStatusChanged() {
+                            aimInspPrinter.text = qsTr("Printer Registers:\n") + aimInspector.printerStatus
+                        }
                     }
                 }
-            }
-
-            Item {
-                // Absorbs any extra horizontal space so the register panels
-                // above stay left-aligned and don't get stretched apart.
-                Layout.fillWidth: true
             }
         }
 
@@ -104,6 +109,7 @@ ApplicationWindow {
         ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.preferredHeight: 1
             clip: true
 
             Text {
