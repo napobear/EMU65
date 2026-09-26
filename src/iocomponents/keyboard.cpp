@@ -44,11 +44,95 @@ Keyboard::Keyboard(const word minAddress, const word maxAddress)
 {
 }
 
-bool Keyboard::IsValidChar(char ch) const
+// Character produced by each matrix position, index = row * 8 + column.
+// This is the Monitor ROM's own table at 0xF421 (AIMMON11); the ROM looks a
+// key up with the row read from DRB2 and the column that was being driven.
+// 0 marks positions without a printable key (the row 0 modifiers, unused).
+// 0x60 and 0x5C are function keys the ROM handles itself.
+static const byte KEY_TABLE[64] = {
+    0x20, 0x08, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x60, 0x5C, 0x00, 0x00, 0x00, 0x7F, 0x00,
+    '.',  'L',  'P',  '-',  ':',  '0',  ';',  '/',
+    'M',  'J',  'I',  'O',  '9',  '8',  'K',  ',',
+    'B',  'G',  'Y',  'U',  '7',  '6',  'H',  'N',
+    'C',  'D',  'R',  'T',  '5',  '4',  'F',  'V',
+    'Z',  'A',  'W',  'E',  '3',  '2',  'S',  'X',
+    0x00, 0x00, 0x1B, 'Q',  '1',  '^',  ']',  '['
+};
+
+// What the ROM turns a base character into while SHIFT is held (the logic at
+// 0xECA4-0xECBF): letters and symbols in 0x40-0x5F are left alone, digits and
+// ':' ';' lose bit 4 ('1' -> '!'), and ',' '-' '.' '/' gain it ('-' -> '=').
+static byte ShiftedChar(byte base)
 {
-  // Accepted ASCII characters: 32-94.
-  // '[', ']' and '^' are interpreted as F1, F2 and F3  respectively.
-  return ch >= 32 && ch <= 94;
+    if ((base & 0x40) != 0 || (base & 0x0F) == 0)
+    {
+        return base;
+    }
+    return (base & 0x0F) < 0x0C ? (base & 0xEF) : (base | 0x10);
+}
+
+bool Keyboard::FindKey(char ch, MatrixPosition &position, bool &shift)
+{
+    for (int i = 0; i < 64; ++i)
+    {
+        const byte base = KEY_TABLE[i];
+        if (base == 0 || base == 0x60 || base == 0x5C)
+        {
+            continue;
+        }
+        const bool printable = base >= 0x20 && base < 0x60;
+        if (base == static_cast<byte>(ch))
+        {
+            position = {i / 8, i % 8};
+            shift = false;
+            return true;
+        }
+        if (printable && ShiftedChar(base) == static_cast<byte>(ch))
+        {
+            position = {i / 8, i % 8};
+            shift = true;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Keyboard::PressKey(char ch)
+{
+    MatrixPosition position;
+    bool shift;
+    if (!FindKey(ch, position, shift))
+    {
+        return false;
+    }
+
+    std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
+    this->m_key = position;
+    this->m_shiftDown = shift;
+    this->m_keyDown = true;
+    return true;
+}
+
+void Keyboard::ReleaseKey()
+{
+    std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
+    this->m_keyDown = false;
+    this->m_shiftDown = false;
+}
+
+byte Keyboard::ReadRows(byte columnSelect) const
+{
+    byte rows = 0xFF;
+    if (this->m_keyDown && (columnSelect & (1 << this->m_key.column)) == 0)
+    {
+        rows &= ~(1 << this->m_key.row);
+    }
+    if (this->m_shiftDown && (columnSelect & (1 << SHIFT_COLUMN)) == 0)
+    {
+        rows &= ~(1 << MODIFIER_ROW);
+    }
+    return rows;
 }
 
 void Keyboard::UpdateDebugStatus(word address)
@@ -59,6 +143,11 @@ void Keyboard::UpdateDebugStatus(word address)
 byte Keyboard::GetRegisterValue(word address)
 {
     std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
+    if (address == DRB2_ADDR)
+    {
+        // Keep the register in step so the debugger shows what was read.
+        this->m_registers[DRB2_ADDR] = this->ReadRows(this->m_registers[DRA2_ADDR]);
+    }
     return IOComponentIRQ::GetRegisterValue(address);
 }
 
@@ -66,15 +155,4 @@ void Keyboard::SetRegister(word address, byte value)
 {
     std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
     IOComponentIRQ::SetRegister(address, value);
-}
-
-// TOTHINK -- Where should I hook up F1, F2 and F3?
-void Keyboard::onKeyPressed(char ch)
-{
-  if (this->IsValidChar(ch))
-    {
-      this->SetRegister(DRB2_ADDR, static_cast<word>(ch));
-      // TODO -- Check whether the state of PA7 is related to the IRQ line (6502 docs).
-      this->SignalIRQ();
-    }
 }

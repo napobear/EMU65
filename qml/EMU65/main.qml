@@ -275,10 +275,10 @@ ApplicationWindow {
                 text: qsTr("<h3>Front panel</h3>"
                            + "<p><b>RESET</b> (button, or Computer &rarr; Reset): restarts the 6502 from the reset vector. RAM is preserved, so the Monitor performs a warm start.</p>"
                            + "<p><b>Power</b> (Computer &rarr; Power ON/OFF): OFF stops the CPU and blanks the display; ON clears RAM and boots from scratch.</p>"
-                           + "<p><b>RUN/STEP</b> (switch, or Computer menu): in STEP the CPU raises an NMI after every instruction executed outside the Monitor ROM (0xE000-0xFFFF). The Monitor stops and shows the registers; press a key to execute the next instruction.</p>"
+                           + "<p><b>RUN/STEP</b> (switch, or Computer menu): in STEP the CPU raises an NMI after every instruction executed outside the Monitor ROM (0xE000-0xFFFF). The Monitor takes control after each instruction; see the AIM 65 manual for how it resumes.</p>"
                            + "<p><b>KB/TTY</b> (switch): selects the terminal. Only the switch position is shown: the TTY interface is not emulated, the keyboard is always used.</p>"
                            + "<h3>Keyboard</h3>"
-                           + "<p>Type on the PC keyboard with the main window focused. ASCII characters 32-94 are accepted; '[', ']' and '^' act as F1, F2 and F3.</p>"
+                           + "<p>Type on the PC keyboard with the main window focused. The Monitor scans the emulated key matrix like the real machine: letters are upper case, Return, Backspace (&larr;), Delete and Esc have their own keys, SHIFT gives the shifted symbols ('!' '\"' '#' ... '&lt;' '=' '&gt;' '?'), and F1, F2 and F3 (also '[', ']' and '^') are the function keys.</p>"
                            + "<h3>Debugger</h3>"
                            + "<p>The <i>EMU65 Debugger</i> window shows the CPU registers, the LED, keyboard and printer registers, and the memory around the most recent RAM write.</p>"
                            + "<h3>More</h3>"
@@ -291,11 +291,17 @@ ApplicationWindow {
         id: keyRegistrar
         focus: true
         anchors.fill: parent
+        // The Monitor scans the keyboard matrix itself: tell the emulated
+        // keyboard which key is down and when it is let go.
         Keys.onPressed: {
-            // A powered-off machine has no keyboard scanning: a key here
-            // would leave an IRQ pending that fires on the next power on.
-            if (aim65Controller.powerOn)
-                keyboard.pressedKey = event.key
+            // A powered-off machine has no keyboard scanning.
+            if (aim65Controller.powerOn && !event.isAutoRepeat)
+                keyboard.keyDown(event.key, event.text)
+            event.accepted = true
+        }
+        Keys.onReleased: {
+            if (!event.isAutoRepeat)
+                keyboard.keyUp()
             event.accepted = true
         }
     }

@@ -11,9 +11,21 @@ class Keyboard : public IOComponentIRQ
   Keyboard(const byte *registers, std::size_t registersSize, const word minAddress, const word maxAddress);
   Keyboard(const word minAddress, const word maxAddress);
   /**
-   * Called from the GUI thread; the CPU thread reads the same registers.
+   * Presses the key that produces the given ASCII character on the AIM-65
+   * keyboard, together with SHIFT when the character needs it. The key stays
+   * down until ReleaseKey(). Called from the GUI thread; the CPU thread reads
+   * the matrix through DRB2.
+   * @param ch Upper case ASCII character, or one of the control codes the
+   *           keyboard has keys for (CR, DEL, ESC, backspace).
+   * @return True if the keyboard has a key for the character.
    */
-  void onKeyPressed(char ch);
+  bool PressKey(char ch);
+  void ReleaseKey();
+  /**
+   * DRB2 returns the state of the key matrix rows for the columns selected
+   * by the last value written to DRA2 (active low, 0xFF when nothing is
+   * pressed), not the last value written to it.
+   */
   byte GetRegisterValue(word address) override;
   void SetRegister(word address, byte value) override;
   void UpdateDebugStatus(word address);
@@ -35,14 +47,35 @@ class Keyboard : public IOComponentIRQ
     // this same component while the lock is held.
     std::recursive_mutex m_mutex;
 
-    DISALLOW_COPY_AND_ASSIGN(Keyboard);
+    /**
+     * A key of the 8x8 matrix: the Monitor drives one column low at a time
+     * through DRA2 and reads the rows (0 = pressed) from DRB2.
+     */
+    struct MatrixPosition
+    {
+        int row;
+        int column;
+    };
+
+    // Modifier keys sit in row 0, columns 4-6 (column 4 is CTRL, 5 and 6 are
+    // the two SHIFT keys); the Monitor ROM applies them to the base character.
+    static const int MODIFIER_ROW = 0;
+    static const int SHIFT_COLUMN = 6;
+
+    bool m_keyDown = false;
+    bool m_shiftDown = false;
+    MatrixPosition m_key = {0, 0};
 
     /**
-     * {Checks whether the character specified is recognised by the AIM65.}
-     * @param ch {Character to check.}
-     * @return {True if it is recognised, false if it's not.}
+     * Finds the matrix position (and whether SHIFT is needed) of a character.
      */
-    bool IsValidChar(char ch) const;
+    static bool FindKey(char ch, MatrixPosition &position, bool &shift);
+    /**
+     * Rows read back for the columns selected by the given DRA2 value.
+     */
+    byte ReadRows(byte columnSelect) const;
+
+    DISALLOW_COPY_AND_ASSIGN(Keyboard);
 };
 
 #endif /* KEYBOARD_H */
