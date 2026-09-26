@@ -56,10 +56,26 @@ target_link_libraries(EMU65 PRIVATE
 # its working directory (qml/EMU65/*.qml, res/rom/AIMMON11.BIN), matching the
 # original qmake deployment layout. Keep those directories next to the built
 # binary so `./EMU65` keeps working when run from the build directory.
-add_custom_command(TARGET EMU65 POST_BUILD
+#
+# This used to be a POST_BUILD step on EMU65, which only ran when the binary
+# itself was relinked: editing just a .qml file left the stale copy in the
+# build directory. Make the copy a separate target that depends on every file
+# under qml/ and res/ (CONFIGURE_DEPENDS re-globs on each build, so added or
+# removed files are picked up too), tracked through a stamp file.
+file(GLOB_RECURSE EMU65_RUNTIME_FILES CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/qml/*
+    ${CMAKE_SOURCE_DIR}/res/*
+)
+set(EMU65_RUNTIME_STAMP ${CMAKE_CURRENT_BINARY_DIR}/runtime_files.stamp)
+add_custom_command(
+    OUTPUT ${EMU65_RUNTIME_STAMP}
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/qml $<TARGET_FILE_DIR:EMU65>/qml
+            ${CMAKE_SOURCE_DIR}/qml ${CMAKE_CURRENT_BINARY_DIR}/qml
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/res $<TARGET_FILE_DIR:EMU65>/res
+            ${CMAKE_SOURCE_DIR}/res ${CMAKE_CURRENT_BINARY_DIR}/res
+    COMMAND ${CMAKE_COMMAND} -E touch ${EMU65_RUNTIME_STAMP}
+    DEPENDS ${EMU65_RUNTIME_FILES}
     COMMENT "Copying qml/ and res/ next to the EMU65 binary"
 )
+add_custom_target(EMU65_runtime_files ALL DEPENDS ${EMU65_RUNTIME_STAMP})
+add_dependencies(EMU65 EMU65_runtime_files)
