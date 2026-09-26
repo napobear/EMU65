@@ -52,10 +52,17 @@ public:
     bool GetPowerSwitch();
     void SetPowerSwitch(bool newState);
     void SetRunStepSwitch(bool newState);
+    /**
+     * Wipes the on-board RAM and the Monitor's RIOT RAM, as after a real
+     * power cycle. Must only be called while the CPU is halted.
+     */
+    void ClearVolatileMemory();
 
 private:
     static Aim65* pInstance;
     Aim65Panel m_panel;
+    IOComponent *m_ram = nullptr;
+    IOComponent *m_monitorRam = nullptr;
     DISALLOW_COPY_AND_ASSIGN(Aim65);
 };
 

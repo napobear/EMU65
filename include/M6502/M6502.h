@@ -68,6 +68,8 @@ typedef struct
   word Trap;          /* Set Trap to address to trace from   */
   byte Trace;         /* Set Trace=1 to start tracing        */
   void *User;         /* Arbitrary user data (ID,RAM*,etc.)  */
+  word OpPC;          /* EMU65: address of the last opcode   */
+                      /* fetched by Run6502() (STEP mode)    */
 } M6502;
 
 /** Reset6502() **********************************************/

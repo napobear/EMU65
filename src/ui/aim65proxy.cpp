@@ -36,22 +36,15 @@ void Aim65Proxy::Start()
     Cpu::GetInstance()->Run();
 }
 
-void Aim65Proxy::SetResetButton(bool newState)
+void Aim65Proxy::PowerOn()
 {
-    if (newState == true)
-    {
-        Cpu::GetInstance()->Reset();
-        Start();
-    }
-    else
-    {
-        Cpu::GetInstance()->Halt();
-    }
-
-    this->m_aim65->SetPowerSwitch(newState);
+    this->m_aim65->ClearVolatileMemory();
+    this->m_aim65->SetPowerSwitch(true);
+    Start();
 }
 
-bool Aim65Proxy::GetResetButton() const
+void Aim65Proxy::PowerOff()
 {
-    return true;
+    this->m_aim65->SetPowerSwitch(false);
+    UiProxyCollection::GetInstance()->GetLedDisplayProxy()->Clear();
 }

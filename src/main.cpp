@@ -37,7 +37,6 @@ int main(int argc, char *argv[])
     Aim65Controller* aim65Controller = new Aim65Controller(aim65Proxy);
 
     aimInspectorWindow.rootContext()->setContextProperty("aimInspector", AimInspector::GetInstance());
-    mainWindow.rootContext()->setContextProperty("aim65", proxyCollection->GetAim65Proxy());
     mainWindow.rootContext()->setContextProperty("aim65Controller", aim65Controller);
     mainWindow.rootContext()->setContextProperty("keyboard", proxyCollection->GetKeyboardProxy());
     mainWindow.rootContext()->setContextProperty("ledDisplay", proxyCollection->GetLedDisplayProxy());

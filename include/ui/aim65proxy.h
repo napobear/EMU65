@@ -17,18 +17,25 @@ class Aim65;
 class Aim65Proxy : public QObject, public UiProxy, public std::enable_shared_from_this<Aim65Proxy>
 {
     Q_OBJECT
-    Q_PROPERTY(bool resetButton
-               READ GetResetButton
-               WRITE SetResetButton)
 
 public:
     explicit Aim65Proxy(Aim65 *aim65, QObject *parent = 0);
     virtual ~Aim65Proxy();
     virtual void RegisterProxy();
-    bool GetResetButton() const;
+// These slots run the 6502 interpreter loop (Start() only returns once the
+// CPU is halted), so they must only ever be invoked on the dedicated CPU
+// thread this object is moved to -- via queued calls from Aim65Controller.
 public slots:
-    void SetResetButton(bool newState);
     void Start();
+    /**
+     * Power switch ON: wipe RAM, then boot from the reset vector.
+     */
+    void PowerOn();
+    /**
+     * Power switch OFF, second half: runs after Cpu::Halt() has made
+     * Start() return, and blanks the LED display.
+     */
+    void PowerOff();
 signals:
 private:
     std::shared_ptr<Aim65> m_aim65;

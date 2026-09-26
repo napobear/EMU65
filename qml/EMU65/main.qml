@@ -12,15 +12,17 @@ ApplicationWindow {
         Menu {
             title: qsTr("Computer")
             MenuItem {
-                text: qsTr("Power ON/OFF")
+                text: aim65Controller.powerOn ? qsTr("Power OFF") : qsTr("Power ON")
+                onTriggered: aim65Controller.powerOn = !aim65Controller.powerOn
             }
             MenuItem {
                 text: qsTr("Reset")
-                /*onTriggered: aim65.resetButton = true*/
-                onTriggered: aim65Controller.Start()
+                enabled: aim65Controller.powerOn
+                onTriggered: aim65Controller.Reset()
             }
             MenuItem {
-                text: qsTr("Toggle RUN/STEP Mode")
+                text: aim65Controller.stepMode ? qsTr("Switch to RUN Mode") : qsTr("Switch to STEP Mode")
+                onTriggered: aim65Controller.stepMode = !aim65Controller.stepMode
             }
             MenuItem {
                 text: qsTr("Exit")
@@ -31,9 +33,11 @@ ApplicationWindow {
             title: qsTr("Help")
             MenuItem {
                 text: qsTr("Documentation")
+                onTriggered: documentationDialog.open()
             }
             MenuItem {
                 text: qsTr("About")
+                onTriggered: aboutDialog.open()
             }
         }
     }
@@ -133,9 +137,13 @@ ApplicationWindow {
             anchors.left: switchPanel.left
             anchors.leftMargin: 10
 
+            // Pressed look: shrink slightly while held down.
+            scale: resetMouseArea.pressed ? 0.9 : 1.0
+
             MouseArea {
+                id: resetMouseArea
                 anchors.fill : parent
-                onClicked: /* aim65.resetButton = true */ aim65Controller.Start()
+                onClicked: aim65Controller.Reset()
             }
         }
 
@@ -146,11 +154,13 @@ ApplicationWindow {
             source: "../../res/img/switch-image.png"
             anchors.horizontalCenter: switchPanel.horizontalCenter
             anchors.verticalCenter: switchPanel.verticalCenter
+            // The lever image points up (RUN, label above); flipped it
+            // points down towards the STEP label below.
+            rotation: aim65Controller.stepMode ? 180 : 0
 
             MouseArea {
                 anchors.fill : parent
-                /*onPressed: parent.color = qsTr("white")
-                onReleased: parent.color = qsTr("black")*/
+                onClicked: aim65Controller.stepMode = !aim65Controller.stepMode
             }
         }
 
@@ -162,6 +172,13 @@ ApplicationWindow {
             anchors.verticalCenter: switchPanel.verticalCenter
             anchors.right: switchPanel.right
             anchors.rightMargin: 10
+            // Up = KB, down = TTY (see runStepBtn).
+            rotation: aim65Controller.ttyMode ? 180 : 0
+
+            MouseArea {
+                anchors.fill : parent
+                onClicked: aim65Controller.ttyMode = !aim65Controller.ttyMode
+            }
         }
     }
 
@@ -218,12 +235,67 @@ ApplicationWindow {
         }
     }
 
+    Dialog {
+        id: aboutDialog
+        title: qsTr("About EMU65")
+        anchors.centerIn: parent
+        width: 460
+        modal: true
+        standardButtons: Dialog.Ok
+        onClosed: keyRegistrar.forceActiveFocus()
+
+        Label {
+            width: parent.width
+            wrapMode: Text.WordWrap
+            text: qsTr("<b>EMU65</b><br>Emulator of the Rockwell AIM 65, a single-board computer based on the 6502 CPU.<br><br>"
+                       + "6502 CPU core by Marat Fayzullin.<br>"
+                       + "Built with Qt 6.<br><br>"
+                       + "Released under the licence in LICENCE.txt.")
+        }
+    }
+
+    Dialog {
+        id: documentationDialog
+        title: qsTr("EMU65 Documentation")
+        anchors.centerIn: parent
+        width: 560
+        height: 340
+        modal: true
+        standardButtons: Dialog.Ok
+        onClosed: keyRegistrar.forceActiveFocus()
+
+        ScrollView {
+            anchors.fill: parent
+            clip: true
+
+            Label {
+                width: documentationDialog.availableWidth
+                wrapMode: Text.WordWrap
+                textFormat: Text.RichText
+                text: qsTr("<h3>Front panel</h3>"
+                           + "<p><b>RESET</b> (button, or Computer &rarr; Reset): restarts the 6502 from the reset vector. RAM is preserved, so the Monitor performs a warm start.</p>"
+                           + "<p><b>Power</b> (Computer &rarr; Power ON/OFF): OFF stops the CPU and blanks the display; ON clears RAM and boots from scratch.</p>"
+                           + "<p><b>RUN/STEP</b> (switch, or Computer menu): in STEP the CPU raises an NMI after every instruction executed outside the Monitor ROM (0xE000-0xFFFF). The Monitor stops and shows the registers; press a key to execute the next instruction.</p>"
+                           + "<p><b>KB/TTY</b> (switch): selects the terminal. Only the switch position is shown: the TTY interface is not emulated, the keyboard is always used.</p>"
+                           + "<h3>Keyboard</h3>"
+                           + "<p>Type on the PC keyboard with the main window focused. ASCII characters 32-94 are accepted; '[', ']' and '^' act as F1, F2 and F3.</p>"
+                           + "<h3>Debugger</h3>"
+                           + "<p>The <i>EMU65 Debugger</i> window shows the CPU registers, the LED, keyboard and printer registers, and the memory around the most recent RAM write.</p>"
+                           + "<h3>More</h3>"
+                           + "<p>See README.txt for build instructions and the project layout; doc/html holds the Doxygen API reference.</p>")
+            }
+        }
+    }
+
     Item {
         id: keyRegistrar
         focus: true
         anchors.fill: parent
         Keys.onPressed: {
-            keyboard.pressedKey = event.key
+            // A powered-off machine has no keyboard scanning: a key here
+            // would leave an IRQ pending that fires on the next power on.
+            if (aim65Controller.powerOn)
+                keyboard.pressedKey = event.key
             event.accepted = true
         }
     }

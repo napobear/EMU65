@@ -1,3 +1,4 @@
+#include <algorithm>
 #include "../../include/ui/leddisplayqtproxy.h"
 
 LedDisplayProxy::LedDisplayProxy(int numDisplays, int numDisplayChars, QObject *parent)
@@ -65,5 +66,14 @@ void LedDisplayProxy::triggerDisplayDigitChanged(std::pair<int,int> displayDigit
         return;
     }
     this->SetLedDisplayChar(displayDigitPair, data);
+    emit displayDigitChanged();
+}
+
+void LedDisplayProxy::Clear()
+{
+    for (auto &display : this->m_ledDisplays)
+    {
+        std::fill(display.begin(), display.end(), 0);
+    }
     emit displayDigitChanged();
 }

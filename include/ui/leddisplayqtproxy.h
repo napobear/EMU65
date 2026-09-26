@@ -27,6 +27,10 @@ public:
     Q_INVOKABLE QString GetLedDisplay();
     virtual void RegisterProxy();
     void triggerDisplayDigitChanged(std::pair<int,int> displayDigitPair, byte data);
+    /**
+     * Blanks every digit (display powered off).
+     */
+    void Clear();
 public slots:
 signals:
     /**

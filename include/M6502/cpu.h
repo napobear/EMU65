@@ -8,6 +8,7 @@
 #ifndef CPU_H
 #define CPU_H
 
+#include <atomic>
 #include <memory>
 #include "../globals.h"
 #include "../iocomponents/cpuchannel.h"
@@ -29,7 +30,26 @@ class Cpu
    */
   void Run();
 
+  /**
+   * Stops the interpreter loop: Run() returns once the instruction in
+   * progress completes. Safe to call from any thread.
+   */
   void Halt();
+
+  /**
+   * Asks the CPU thread to reset the 6502 (reload PC from the reset
+   * vector) before its next instruction -- the front-panel RESET button.
+   * Safe to call from any thread while Run() is executing.
+   */
+  void RequestReset();
+
+  /**
+   * RUN/STEP switch. In STEP mode an NMI is raised after every
+   * instruction executed outside the Monitor ROM, which the Monitor
+   * handles by stopping and showing the registers. Safe to call from any
+   * thread.
+   */
+  void SetStepMode(bool stepMode);
 
   /**
    * Retrieve a byte from the specified memory address.
@@ -118,7 +138,11 @@ class Cpu
 
   ~Cpu();
 
-  bool m_halt;
+  // Written by the GUI thread (front-panel controls) and read by the CPU
+  // thread inside the interpreter loop, hence atomic.
+  std::atomic<bool> m_halt;
+  std::atomic<bool> m_resetRequested;
+  std::atomic<bool> m_stepMode;
 };
 
 #endif /* CPU_H */
