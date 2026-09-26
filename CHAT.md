@@ -334,3 +334,34 @@ lavoro non committato (e non verificato) trovato nel working tree.
 - **Cosa NON è stato verificato**: single-step reale in modalità STEP con
   un programma utente; se il display LED principale ora si popola.
 - Commit: `0af2a37` (controlli), `d86651d` (race), più questo delle note.
+
+
+## 10. Tastiera a matrice (2026-09-26, branch `feature/keyboard-matrix-scan`)
+
+Partito da "far accettare Invio": `IsValidChar` (32-94) scartava 0x0D e
+`main.qml` troncava `event.key` a `char`. Ma il Monitor non legge ASCII:
+scandisce una matrice (strobe su `A480`, righe da `A482`, tabella ROM a
+`0xF421`), quindi ho disassemblato la routine `0xEC38-0xED2C` (piccolo
+disassemblatore Python nello scratchpad) e riscritto la tastiera.
+
+- **Scoperta**: `A482` a riposo doveva valere `FF`; l'emulatore lo teneva a
+  `00` (costruttore + `STA $A480,X` a `0xE0D7` nella ROM), e `0xECEF`
+  aspetta `FF` prima di scandire: il boot restava fermo a `PC:EC42`.
+  Provato forzando `DRB2=FF`: la CPU passa al ciclo di scansione.
+- **Implementazione**: `Keyboard::PressKey/ReleaseKey`, lettura di `DRB2`
+  calcolata dalla matrice, `KeyboardProxy::keyDown/keyUp` (autorepeat
+  ignorato, rilascio minimo 40 ms). Nessun IRQ.
+- **Verifica**: traccia temporanea sul `RTS` a `0xECEB` (mai committata):
+  Invio→`0D`, `Shift+1`→`21`, F1→`5B` ecc. TSan: solo i falsi positivi noti.
+  Regressione (tasto a macchina spenta + Power ON) ok.
+- **Ambiente**: KDE ha chiesto il consenso per `xdotool` (controllo input);
+  va concesso dall'utente, mai cliccato in autonomia.
+- **Aperto**: il display principale resta vuoto (i registri LED cambiano);
+  il resume di STEP via comandi del Monitor non è ancora provato.
+- **Ctrl** (aggiunto dopo): riga 0, colonna 4. Primo tentativo con Ctrl e
+  tasto premuti insieme: risultato casuale (`41/03/5A` per Ctrl+A/C/Z),
+  anche allungando la pressione a 120 ms. Causa: la ROM legge i modificatori
+  a inizio ciclo e il tasto subito dopo, quindi un tasto simultaneo può
+  sfuggire al controllo Ctrl. Fix: modificatori 100 ms prima del tasto.
+  Dopo: 23/23 corretti (`01 03 1A 21` x5, `41 42 0D`), TSan pulito.
+
