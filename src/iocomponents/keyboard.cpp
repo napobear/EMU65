@@ -72,7 +72,7 @@ static byte ShiftedChar(byte base)
     return (base & 0x0F) < 0x0C ? (base & 0xEF) : (base | 0x10);
 }
 
-bool Keyboard::FindKey(char ch, MatrixPosition &position, bool &shift)
+bool Keyboard::FindKey(char ch, bool ctrl, KeyPress &keyPress)
 {
     for (int i = 0; i < 64; ++i)
     {
@@ -84,34 +84,32 @@ bool Keyboard::FindKey(char ch, MatrixPosition &position, bool &shift)
         const bool printable = base >= 0x20 && base < 0x60;
         if (base == static_cast<byte>(ch))
         {
-            position = {i / 8, i % 8};
-            shift = false;
+            keyPress = {i / 8, i % 8, false, ctrl};
             return true;
         }
         if (printable && ShiftedChar(base) == static_cast<byte>(ch))
         {
-            position = {i / 8, i % 8};
-            shift = true;
+            keyPress = {i / 8, i % 8, true, ctrl};
             return true;
         }
     }
     return false;
 }
 
-bool Keyboard::PressKey(char ch)
+void Keyboard::PressModifiers(const KeyPress &keyPress)
 {
-    MatrixPosition position;
-    bool shift;
-    if (!FindKey(ch, position, shift))
-    {
-        return false;
-    }
-
     std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
-    this->m_key = position;
-    this->m_shiftDown = shift;
+    this->m_shiftDown = keyPress.shift;
+    this->m_ctrlDown = keyPress.ctrl;
+}
+
+void Keyboard::PressKey(const KeyPress &keyPress)
+{
+    std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
+    this->m_key = keyPress;
+    this->m_shiftDown = keyPress.shift;
+    this->m_ctrlDown = keyPress.ctrl;
     this->m_keyDown = true;
-    return true;
 }
 
 void Keyboard::ReleaseKey()
@@ -119,6 +117,7 @@ void Keyboard::ReleaseKey()
     std::lock_guard<std::recursive_mutex> lock(this->m_mutex);
     this->m_keyDown = false;
     this->m_shiftDown = false;
+    this->m_ctrlDown = false;
 }
 
 byte Keyboard::ReadRows(byte columnSelect) const
@@ -129,6 +128,10 @@ byte Keyboard::ReadRows(byte columnSelect) const
         rows &= ~(1 << this->m_key.row);
     }
     if (this->m_shiftDown && (columnSelect & (1 << SHIFT_COLUMN)) == 0)
+    {
+        rows &= ~(1 << MODIFIER_ROW);
+    }
+    if (this->m_ctrlDown && (columnSelect & (1 << CTRL_COLUMN)) == 0)
     {
         rows &= ~(1 << MODIFIER_ROW);
     }

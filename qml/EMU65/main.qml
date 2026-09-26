@@ -278,7 +278,7 @@ ApplicationWindow {
                            + "<p><b>RUN/STEP</b> (switch, or Computer menu): in STEP the CPU raises an NMI after every instruction executed outside the Monitor ROM (0xE000-0xFFFF). The Monitor takes control after each instruction; see the AIM 65 manual for how it resumes.</p>"
                            + "<p><b>KB/TTY</b> (switch): selects the terminal. Only the switch position is shown: the TTY interface is not emulated, the keyboard is always used.</p>"
                            + "<h3>Keyboard</h3>"
-                           + "<p>Type on the PC keyboard with the main window focused. The Monitor scans the emulated key matrix like the real machine: letters are upper case, Return, Backspace (&larr;), Delete and Esc have their own keys, SHIFT gives the shifted symbols ('!' '\"' '#' ... '&lt;' '=' '&gt;' '?'), and F1, F2 and F3 (also '[', ']' and '^') are the function keys.</p>"
+                           + "<p>Type on the PC keyboard with the main window focused. The Monitor scans the emulated key matrix like the real machine: letters are upper case, Return, Backspace (&larr;), Delete and Esc have their own keys, SHIFT gives the shifted symbols and CTRL the control codes ('!' '\"' '#' ... '&lt;' '=' '&gt;' '?'), and F1, F2 and F3 (also '[', ']' and '^') are the function keys.</p>"
                            + "<h3>Debugger</h3>"
                            + "<p>The <i>EMU65 Debugger</i> window shows the CPU registers, the LED, keyboard and printer registers, and the memory around the most recent RAM write.</p>"
                            + "<h3>More</h3>"
@@ -296,7 +296,7 @@ ApplicationWindow {
         Keys.onPressed: {
             // A powered-off machine has no keyboard scanning.
             if (aim65Controller.powerOn && !event.isAutoRepeat)
-                keyboard.keyDown(event.key, event.text)
+                keyboard.keyDown(event.key, event.text, (event.modifiers & Qt.ControlModifier) !== 0)
             event.accepted = true
         }
         Keys.onReleased: {

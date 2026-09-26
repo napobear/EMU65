@@ -24,10 +24,20 @@ void KeyboardProxy::RegisterProxy()
 
 // The Monitor debounces by scanning, waiting and scanning again, and it is
 // far quicker than a person: a tap shorter than this could be missed.
-static const int MIN_KEY_HOLD_MS = 40;
+static const int MIN_KEY_HOLD_MS = 80;
+// A modifier is held this long before its key: the Monitor looks at the
+// modifiers at the start of its scan loop and at the key a moment later.
+static const int MODIFIER_LEAD_MS = 100;
 
-char KeyboardProxy::MapKey(int key, const QString &text)
+char KeyboardProxy::MapKey(int key, const QString &text, bool ctrl)
 {
+    // Qt::Key values for letters, digits and most punctuation are their
+    // (upper case) ASCII codes; the text of Ctrl+letter is a control code.
+    if (ctrl && key >= 0x20 && key <= 0x5F)
+    {
+        return static_cast<char>(key);
+    }
+
     switch (key)
     {
     case Qt::Key_Return:
@@ -59,15 +69,36 @@ char KeyboardProxy::MapKey(int key, const QString &text)
     return static_cast<char>(upper.at(0).unicode());
 }
 
-void KeyboardProxy::keyDown(int key, const QString &text)
+void KeyboardProxy::keyDown(int key, const QString &text, bool ctrl)
 {
-    const char ch = MapKey(key, text);
-    if (ch != 0 && this->m_keyboard->PressKey(ch))
+    const char ch = MapKey(key, text, ctrl);
+    Keyboard::KeyPress keyPress;
+    if (ch == 0 || !Keyboard::FindKey(ch, ctrl, keyPress))
     {
-        this->m_heldFor.start();
-        this->m_keyHeld = true;
-        ++this->m_pressId;
+        return;
     }
+
+    this->m_clock.start();
+    this->m_keyHeld = true;
+    const unsigned pressId = ++this->m_pressId;
+
+    if (!keyPress.shift && !keyPress.ctrl)
+    {
+        this->m_keyAppliedAt = 0;
+        this->m_keyboard->PressKey(keyPress);
+        return;
+    }
+
+    this->m_keyAppliedAt = MODIFIER_LEAD_MS;
+    this->m_keyboard->PressModifiers(keyPress);
+    QTimer::singleShot(MODIFIER_LEAD_MS, this, [this, pressId, keyPress]()
+    {
+        // Skip it if the key was let go and pressed again meanwhile.
+        if (pressId == this->m_pressId)
+        {
+            this->m_keyboard->PressKey(keyPress);
+        }
+    });
 }
 
 void KeyboardProxy::keyUp()
@@ -78,7 +109,8 @@ void KeyboardProxy::keyUp()
     }
     this->m_keyHeld = false;
 
-    const qint64 remaining = MIN_KEY_HOLD_MS - this->m_heldFor.elapsed();
+    // Long enough for the key to be seen once it has actually been pressed.
+    const qint64 remaining = this->m_keyAppliedAt + MIN_KEY_HOLD_MS - this->m_clock.elapsed();
     if (remaining <= 0)
     {
         this->m_keyboard->ReleaseKey();
