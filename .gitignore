@@ -1,6 +1,3 @@
-# Note di lavoro per Claude Code, non versionate su richiesta dell'utente.
-CLAUDE.md
-
 # Directory di build CMake (out-of-source).
 build/
 build-*/
