@@ -228,12 +228,21 @@ riposo. Il carattere è `KEY_TABLE[riga*8 + colonna]`, la tabella ROM a
 - Nessun IRQ da tastiera: il Monitor fa polling.
 - `KeyboardProxy::keyDown(key, text)`/`keyUp()` (QML `Keys.onPressed/
   onReleased`, autorepeat ignorato) mappano Return→0D, Backspace→08,
-  Delete→7F, Esc→1B, F1-F3→`[` `]` `^`, altrimenti `text` in maiuscolo. Il
-  rilascio è ritardato a un minimo di 40 ms perché il debounce della ROM
-  (scan, attesa, riscansione) non perda un tap veloce.
+  Delete→7F, Esc→1B, F1-F3→`[` `]` `^`, altrimenti `text` in maiuscolo; con
+  Ctrl si usa `event.key` (il testo di Ctrl+lettera è un codice di
+  controllo) e la ROM applica `AND #$3F` (Ctrl+A→`01`, Ctrl+C→`03`).
+  Il rilascio è ritardato a un minimo di 80 ms dopo che il tasto è stato
+  applicato, perché il debounce della ROM (scan, attesa, riscansione) non
+  perda un tap veloce.
+- **I modificatori vanno premuti prima del tasto** (`MODIFIER_LEAD_MS` =
+  100 ms, `PressModifiers` poi `PressKey`): la ROM controlla i modificatori
+  a inizio ciclo di scansione (`0xEC46`) e il tasto subito dopo; un tasto che
+  compare insieme a Ctrl/Shift può essere letto senza. Con pressione
+  simultanea Ctrl+A/C/Z dava `41/03/5A` a caso; con l'anticipo 15/15
+  corretti.
 - Verifica: traccia temporanea (mai committata) sul `RTS` a `0xECEB` che
   stampa `A`: `a→41`, `1→31`, `Shift+1→21`, Return→`0D`, Backspace→`08`,
-  `F1→5B`, `.`→`2E` ecc. CTRL non è mappato. Lo `Shift+,` su layout
+  `F1→5B`, `.`→`2E` ecc. Lo `Shift+,` su layout
   italiano dà `;` perché è già il carattere prodotto dal PC.
 
 ## Prossimi passi

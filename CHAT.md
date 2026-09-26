@@ -358,4 +358,10 @@ disassemblatore Python nello scratchpad) e riscritto la tastiera.
   va concesso dall'utente, mai cliccato in autonomia.
 - **Aperto**: il display principale resta vuoto (i registri LED cambiano);
   il resume di STEP via comandi del Monitor non è ancora provato.
+- **Ctrl** (aggiunto dopo): riga 0, colonna 4. Primo tentativo con Ctrl e
+  tasto premuti insieme: risultato casuale (`41/03/5A` per Ctrl+A/C/Z),
+  anche allungando la pressione a 120 ms. Causa: la ROM legge i modificatori
+  a inizio ciclo e il tasto subito dopo, quindi un tasto simultaneo può
+  sfuggire al controllo Ctrl. Fix: modificatori 100 ms prima del tasto.
+  Dopo: 23/23 corretti (`01 03 1A 21` x5, `41 42 0D`), TSan pulito.
 
